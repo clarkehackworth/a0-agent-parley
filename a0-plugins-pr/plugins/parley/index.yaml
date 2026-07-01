@@ -1,0 +1,7 @@
+title: Parley
+description: Bring Agent Zero into Stoat/Revolt, Discord, and Slack as a teammate, not a bolted-on bot. It builds smart context-aware conversations from channel history, so you don't have to repeat yourself, and replies right in-thread when @mentioned.
+github: https://github.com/<you>/AgentParley
+tags:
+  - api
+  - webhooks
+  - automation

@@ -1,0 +1,379 @@
+<!-- Generic channel view panel for Discord and Slack.
+     Opened by discord-panel.html and slack-panel.html via window._platformCV.openChannel(...).
+     API endpoints are derived from the platform name passed at open time. -->
+<style>
+  #platform-cv {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 250px;
+    z-index: 1050;
+    background: var(--color-bg, #1e1e2e);
+    border-left: 1px solid var(--color-border, #333);
+    flex-direction: column;
+    font-family: inherit;
+  }
+  #platform-cv.open { display: flex; }
+
+  .pcv-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-border, #333);
+    flex-shrink: 0;
+    background: var(--color-panel, #161622);
+  }
+  .pcv-server {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #888);
+  }
+  .pcv-title {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pcv-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary, #888);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .pcv-btn:hover {
+    background: var(--color-bg-hover, rgba(255,255,255,0.07));
+    color: var(--color-text, #eee);
+  }
+  .pcv-btn.spinning { animation: pcv-spin 0.9s linear infinite; }
+  @keyframes pcv-spin { to { transform: rotate(360deg); } }
+
+  .pcv-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    scroll-behavior: smooth;
+  }
+
+  .pcv-empty, .pcv-loading, .pcv-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    font-size: 0.9rem;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+  }
+  .pcv-loading { color: var(--color-text-secondary, #888); }
+  .pcv-error   { color: #e57373; align-items: flex-start; }
+  .pcv-empty   { color: var(--color-text-secondary, #888); font-style: italic; }
+  .pcv-loading-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--color-border, #444);
+    border-top-color: var(--color-accent, #7c8cff);
+    border-radius: 50%;
+    animation: pcv-spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .pcv-msg {
+    display: flex;
+    flex-direction: column;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .pcv-msg:hover { background: var(--color-bg-hover, rgba(255,255,255,0.04)); }
+  .pcv-msg.pcv-msg-new { animation: pcv-fadein 0.3s ease; }
+  @keyframes pcv-fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .pcv-msg-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary, #888);
+    margin-bottom: 1px;
+  }
+  .pcv-msg-author { font-weight: 600; color: var(--color-text, #ddd); font-size: 0.85rem; }
+  .pcv-msg-own .pcv-msg-author { color: var(--color-success, #4caf50); }
+  .pcv-msg-time { font-size: 0.72rem; }
+  .pcv-msg-body {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--color-text, #ccc);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .pcv-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--color-border, #333);
+    background: var(--color-panel, #161622);
+    flex-shrink: 0;
+    align-items: flex-end;
+  }
+  .pcv-textarea {
+    flex: 1;
+    background: var(--color-input-bg, #2a2a3e);
+    border: 1px solid var(--color-border, #444);
+    border-radius: 8px;
+    color: var(--color-text, #eee);
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 8px 12px;
+    resize: none;
+    min-height: 38px;
+    max-height: 120px;
+    outline: none;
+    line-height: 1.4;
+    overflow-y: auto;
+  }
+  .pcv-textarea:focus { border-color: var(--color-accent, #7c8cff); }
+  .pcv-send-btn {
+    background: var(--color-accent, #7c8cff);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.9rem;
+    padding: 0 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    height: 38px;
+    transition: opacity 0.15s;
+    align-self: flex-end;
+  }
+  .pcv-send-btn:hover { opacity: 0.85; }
+  .pcv-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+
+<script type="module">
+  import { callJsonApi } from "/js/api.js";
+
+  const panel = document.createElement("div");
+  panel.id = "platform-cv";
+  panel.innerHTML = `
+    <div class="pcv-header">
+      <span class="pcv-server" id="pcv-server"></span>
+      <span class="pcv-title" id="pcv-title">#channel</span>
+      <button class="pcv-btn" id="pcv-refresh" title="Refresh messages">⟳</button>
+      <button class="pcv-btn" id="pcv-close" title="Close">✕</button>
+    </div>
+    <div class="pcv-messages" id="pcv-messages"></div>
+    <div class="pcv-input-area">
+      <textarea class="pcv-textarea" id="pcv-textarea" placeholder="Message #channel…" rows="1"></textarea>
+      <button class="pcv-send-btn" id="pcv-send">Send</button>
+    </div>
+  `;
+
+  const msgArea  = () => document.getElementById("pcv-messages");
+  const textarea = () => document.getElementById("pcv-textarea");
+  const sendBtn  = () => document.getElementById("pcv-send");
+
+  let _channelId   = null;
+  let _channelName = null;
+  let _serverName  = null;
+  let _platform    = null;   // "discord" | "slack"
+  let _ownUserId   = null;
+  let _displayedIds = new Set();
+  let _pollTimer   = null;
+  let _loading     = false;
+  let _sending     = false;
+
+  function _bindEvents() {
+    document.getElementById("pcv-close").addEventListener("click", closePanel);
+    document.getElementById("pcv-refresh").addEventListener("click", () => {
+      if (_channelId) loadChannel(true);
+    });
+    document.addEventListener("click", (e) => {
+      if (!panel.classList.contains("open")) return;
+      if (e.target.closest(".chat-container") && !e.target.closest("#platform-cv")) closePanel();
+    });
+
+    const ta = textarea();
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    ta.addEventListener("input", () => {
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+    });
+    sendBtn().addEventListener("click", sendMessage);
+
+    const _attachObs = () => {
+      const s = document.getElementById("left-panel");
+      if (s) new ResizeObserver(_syncLeft).observe(s);
+    };
+    if (document.getElementById("left-panel")) _attachObs();
+    document.addEventListener("DOMContentLoaded", _attachObs, { once: true });
+  }
+
+  // ── Public API ───────────────────────────────────────────────────────────────
+  window._platformCV = {
+    openChannel(channelId, channelName, serverName, platform, ownUserId) {
+      _channelId   = channelId;
+      _channelName = channelName;
+      _serverName  = serverName;
+      _platform    = platform;
+      _ownUserId   = ownUserId || null;
+
+      document.getElementById("pcv-title").textContent  = "#" + channelName;
+      document.getElementById("pcv-server").textContent = (serverName || "") + " /";
+      textarea().placeholder = `Message #${channelName}…`;
+
+      _displayedIds = new Set();
+      _stopPolling();
+
+      panel.classList.add("open");
+      _syncLeft();
+      loadChannel(false);
+    },
+    closePanel,
+  };
+
+  function _syncLeft() {
+    const sidebar = document.getElementById("left-panel");
+    panel.style.left = sidebar ? sidebar.offsetWidth + "px" : "250px";
+  }
+
+  function closePanel() {
+    panel.classList.remove("open");
+    _stopPolling();
+    _channelId = null;
+  }
+
+  // ── Load & poll ──────────────────────────────────────────────────────────────
+  async function loadChannel(isRefresh) {
+    if (_loading) return;
+    _loading = true;
+    _stopPolling();
+
+    const area = msgArea();
+    const refreshBtn = document.getElementById("pcv-refresh");
+    refreshBtn.classList.add("spinning");
+
+    if (!isRefresh) {
+      _displayedIds = new Set();
+      area.innerHTML = `<div class="pcv-loading"><div class="pcv-loading-spinner"></div>Loading messages…</div>`;
+    }
+
+    try {
+      const data = await callJsonApi(`/plugins/parley/${_platform}_messages`, {
+        channel_id: _channelId,
+        recent_limit: 50,
+      });
+      if (!data?.ok || !data.messages) throw new Error(data?.error || "Load failed");
+
+      if (!isRefresh) area.innerHTML = "";
+      for (const msg of [...data.messages].reverse()) {
+        if (_displayedIds.has(msg.id)) continue;
+        _displayedIds.add(msg.id);
+        area.appendChild(_render(msg, false));
+      }
+      area.scrollTop = area.scrollHeight;
+    } catch (e) {
+      if (!isRefresh) area.innerHTML = `<div class="pcv-error">⚠ ${_esc(String(e))}</div>`;
+    } finally {
+      _loading = false;
+      refreshBtn.classList.remove("spinning");
+      _startPolling();
+    }
+  }
+
+  function _startPolling() {
+    _pollTimer = setInterval(_poll, 3000);
+  }
+  function _stopPolling() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  }
+
+  async function _poll() {
+    if (!_channelId) return;
+    const area = msgArea();
+    try {
+      const data = await callJsonApi(`/plugins/parley/${_platform}_messages`, {
+        channel_id: _channelId,
+        recent_limit: 20,
+      });
+      if (!data?.ok || !data.messages) return;
+      const incoming = [...data.messages].reverse().filter(m => !_displayedIds.has(m.id));
+      for (const msg of incoming) {
+        _displayedIds.add(msg.id);
+        area.appendChild(_render(msg, true));
+      }
+      if (incoming.length) area.scrollTop = area.scrollHeight;
+    } catch (_) {}
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  function _render(msg, isNew) {
+    const isOwn = _ownUserId && msg.author_id === _ownUserId;
+    const el = document.createElement("div");
+    el.className = "pcv-msg" + (isOwn ? " pcv-msg-own" : "") + (isNew ? " pcv-msg-new" : "");
+    el.dataset.id = msg.id;
+
+    const timeMatch = (msg.formatted || "").match(/^\[([^\]]+)\]/);
+    const timeStr = timeMatch ? timeMatch[1] : "";
+
+    el.innerHTML = `
+      <div class="pcv-msg-meta">
+        <span class="pcv-msg-author">${_esc(msg.author || "?")}</span>
+        <span class="pcv-msg-time">${_esc(timeStr)}</span>
+      </div>
+      <div class="pcv-msg-body">${_esc(msg.content || "")}</div>
+    `;
+    return el;
+  }
+
+  // ── Send ─────────────────────────────────────────────────────────────────────
+  async function sendMessage() {
+    const ta = textarea();
+    const text = ta.value.trim();
+    if (!text || _sending || !_channelId) return;
+    _sending = true;
+    const btn = sendBtn();
+    btn.disabled = true;
+    ta.disabled = true;
+    try {
+      const data = await callJsonApi(`/plugins/parley/${_platform}_send_message`, {
+        channel_id: _channelId,
+        content: text,
+      });
+      if (!data?.ok) throw new Error(data?.error || "Send failed");
+      ta.value = "";
+      ta.style.height = "auto";
+      setTimeout(() => loadChannel(true), 600);
+    } catch (e) {
+      alert("Send failed: " + e);
+    } finally {
+      _sending = false;
+      btn.disabled = false;
+      ta.disabled = false;
+      ta.focus();
+    }
+  }
+
+  // ── Util ─────────────────────────────────────────────────────────────────────
+  function _esc(str) {
+    return String(str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  const attach = () => { document.body.appendChild(panel); _bindEvents(); };
+  document.body ? attach() : document.addEventListener("DOMContentLoaded", attach);
+</script>

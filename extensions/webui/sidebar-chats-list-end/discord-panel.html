@@ -1,0 +1,274 @@
+<!-- Discord channel panel — injected above the Chats list in the sidebar.
+     Hidden automatically when Discord is not configured. -->
+<div
+  id="discord-panel"
+  x-data
+  x-init="$store.discord.init()"
+  style="display:none"
+>
+  <style>
+    #discord-panel {
+      flex-shrink: 0;
+    }
+
+    .discord-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-right: 8px;
+    }
+
+    #discord-panel .discord-header {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .discord-status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: 5px;
+      background: var(--color-border, #555);
+      vertical-align: middle;
+      transition: background 0.3s;
+    }
+    .discord-status-dot.live  { background: #4caf50; }
+    .discord-status-dot.error { background: #e53935; }
+
+    .discord-channel-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 6px 0;
+    }
+
+    .discord-channel-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px 4px 18px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 1px 4px;
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .discord-channel-item:hover {
+      background: var(--color-background-hover, rgba(255,255,255,0.06));
+      color: var(--color-text);
+    }
+    .discord-hash {
+      font-weight: 600;
+      opacity: 0.5;
+      font-size: 0.9em;
+      flex-shrink: 0;
+    }
+    .discord-channel-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .discord-info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 4px 14px 8px 14px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .discord-info-row.error { color: #e57373; }
+    .discord-info-row.muted { color: var(--color-text-muted); opacity: 0.7; }
+    .discord-info-icon { flex-shrink: 0; font-style: normal; }
+
+    .discord-add-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1;
+      opacity: 0.65;
+      transition: opacity 0.15s;
+    }
+    .discord-add-btn:hover { opacity: 1; }
+  </style>
+
+  <!-- Header row -->
+  <div class="discord-header-row">
+    <h3
+      class="section-header section-header-collapsible discord-header"
+      @click="$store.sidebar.toggleSection('discord')"
+      x-effect="$store.sidebar.isSectionOpen('discord')
+        ? $el.classList.remove('collapsed')
+        : $el.classList.add('collapsed')"
+    >
+      <span x-text="$store.discord.serverName || 'Discord'"></span>
+      <span
+        class="discord-status-dot"
+        :class="$store.discord.connected ? 'live' : ($store.discord.error ? 'error' : '')"
+      ></span>
+      <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M8 4l8 8-8 8" />
+      </svg>
+    </h3>
+
+    <button
+      class="discord-add-btn"
+      @click.stop="$store.discord.openPicker()"
+      title="Select watched channels"
+    >＋</button>
+  </div>
+
+  <!-- Collapsible body -->
+  <div
+    class="collapse"
+    id="discord-collapse"
+    x-effect="(() => {
+      const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false });
+      $store.sidebar.isSectionOpen('discord') ? c.show() : c.hide();
+    })()"
+  >
+    <!-- Error state -->
+    <template x-if="$store.discord.error">
+      <div class="discord-info-row error">
+        <span class="discord-info-icon">⚠</span>
+        <span>
+          <strong x-text="$store.discord.errorTitle"></strong><br>
+          <span x-text="$store.discord.error" style="opacity:0.85"></span>
+        </span>
+      </div>
+    </template>
+
+    <!-- Channel list -->
+    <template x-if="!$store.discord.error">
+      <div>
+        <template x-if="$store.discord.loading && $store.discord.allServerChannels.length === 0">
+          <div class="discord-info-row muted">
+            <span class="discord-info-icon">…</span>
+            <span>Connecting to Discord…</span>
+          </div>
+        </template>
+
+        <template x-if="!$store.discord.loading && $store.discord.displayedChannels.length === 0">
+          <div class="discord-info-row muted">
+            <span class="discord-info-icon">ℹ</span>
+            <span>No text channels found.</span>
+          </div>
+        </template>
+
+        <ul class="discord-channel-list" x-show="$store.discord.displayedChannels.length > 0">
+          <template x-for="ch in $store.discord.displayedChannels" :key="ch.id">
+            <li
+              class="discord-channel-item"
+              @click="$store.discord.openChannel(ch)"
+              :title="'Ask agent to read #' + ch.name"
+            >
+              <span class="discord-hash">#</span>
+              <span class="discord-channel-name" x-text="ch.name"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script type="module">
+import { createStore } from "/js/AlpineStore.js";
+import { callJsonApi } from "/js/api.js";
+
+createStore("discord", {
+  allServerChannels: [],
+  watchedChannels: [],
+  serverName: "Discord",
+  connected: false,
+  loading: false,
+  error: null,
+  errorTitle: "",
+  botUserId: "",
+
+  get displayedChannels() {
+    if (!this.watchedChannels || this.watchedChannels.length === 0) {
+      return this.allServerChannels;
+    }
+    const ids = new Set(this.watchedChannels);
+    return this.allServerChannels.filter(ch => ids.has(ch.id));
+  },
+
+  async init() {
+    const sidebar = Alpine.store("sidebar");
+    if (sidebar && !("discord" in sidebar.sectionStates)) {
+      sidebar.sectionStates.discord = true;
+      sidebar.persistSectionStates();
+    }
+    await this.refresh();
+  },
+
+  async refresh() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = null;
+    this.errorTitle = "";
+
+    try {
+      const data = await callJsonApi("/plugins/parley/discord_channels");
+
+      if (data && data.not_configured) {
+        // ponytail: re-check once when settings are saved
+        document.addEventListener("settings-updated", () => this.init(), { once: true });
+        return;
+      }
+
+      document.getElementById("discord-panel").style.display = "block";
+
+      if (data && data.ok) {
+        this.allServerChannels = (data.channels || []).filter(c => c.type === "TextChannel");
+        this.watchedChannels = data.watched_channels || [];
+        this.serverName = data.server_name || "Discord";
+        this.botUserId = data.bot_user_id || "";
+        this.connected = true;
+      } else {
+        this.errorTitle = "Discord error";
+        this.error = (data && data.error) || "Unknown error";
+      }
+    } catch (e) {
+      document.getElementById("discord-panel").style.display = "block";
+      this.errorTitle = "Discord error";
+      this.error = e?.message || String(e);
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  openPicker() {
+    Alpine.store("channelPicker").show({
+      title: "Discord Channels",
+      channels: this.allServerChannels,
+      watchedIds: this.watchedChannels,
+      onSave: async (ids) => {
+        const data = await callJsonApi("/plugins/parley/discord_update_channels", { watched_channels: ids });
+        if (!data.ok) throw new Error(data.error || "Save failed");
+        this.watchedChannels = ids;
+      },
+      onRefresh: async () => {
+        await this.refresh();
+        return this.allServerChannels;
+      },
+    });
+  },
+
+  openChannel(ch) {
+    if (window._platformCV) {
+      window._platformCV.openChannel(ch.id, ch.name, this.serverName, "discord", this.botUserId);
+    }
+  },
+});
+</script>

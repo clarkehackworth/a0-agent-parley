@@ -1,0 +1,274 @@
+<!-- Slack channel panel — injected above the Chats list in the sidebar.
+     Hidden automatically when Slack is not configured. -->
+<div
+  id="slack-panel"
+  x-data
+  x-init="$store.slack.init()"
+  style="display:none"
+>
+  <style>
+    #slack-panel {
+      flex-shrink: 0;
+    }
+
+    .slack-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-right: 8px;
+    }
+
+    #slack-panel .slack-header {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .slack-status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: 5px;
+      background: var(--color-border, #555);
+      vertical-align: middle;
+      transition: background 0.3s;
+    }
+    .slack-status-dot.live  { background: #4caf50; }
+    .slack-status-dot.error { background: #e53935; }
+
+    .slack-channel-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 6px 0;
+    }
+
+    .slack-channel-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px 4px 18px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 1px 4px;
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .slack-channel-item:hover {
+      background: var(--color-background-hover, rgba(255,255,255,0.06));
+      color: var(--color-text);
+    }
+    .slack-hash {
+      font-weight: 600;
+      opacity: 0.5;
+      font-size: 0.9em;
+      flex-shrink: 0;
+    }
+    .slack-channel-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .slack-info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 4px 14px 8px 14px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .slack-info-row.error { color: #e57373; }
+    .slack-info-row.muted { color: var(--color-text-muted); opacity: 0.7; }
+    .slack-info-icon { flex-shrink: 0; font-style: normal; }
+
+    .slack-add-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1;
+      opacity: 0.65;
+      transition: opacity 0.15s;
+    }
+    .slack-add-btn:hover { opacity: 1; }
+  </style>
+
+  <!-- Header row -->
+  <div class="slack-header-row">
+    <h3
+      class="section-header section-header-collapsible slack-header"
+      @click="$store.sidebar.toggleSection('slack')"
+      x-effect="$store.sidebar.isSectionOpen('slack')
+        ? $el.classList.remove('collapsed')
+        : $el.classList.add('collapsed')"
+    >
+      <span x-text="$store.slack.serverName || 'Slack'"></span>
+      <span
+        class="slack-status-dot"
+        :class="$store.slack.connected ? 'live' : ($store.slack.error ? 'error' : '')"
+      ></span>
+      <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M8 4l8 8-8 8" />
+      </svg>
+    </h3>
+
+    <button
+      class="slack-add-btn"
+      @click.stop="$store.slack.openPicker()"
+      title="Select watched channels"
+    >＋</button>
+  </div>
+
+  <!-- Collapsible body -->
+  <div
+    class="collapse"
+    id="slack-collapse"
+    x-effect="(() => {
+      const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false });
+      $store.sidebar.isSectionOpen('slack') ? c.show() : c.hide();
+    })()"
+  >
+    <!-- Error state -->
+    <template x-if="$store.slack.error">
+      <div class="slack-info-row error">
+        <span class="slack-info-icon">⚠</span>
+        <span>
+          <strong x-text="$store.slack.errorTitle"></strong><br>
+          <span x-text="$store.slack.error" style="opacity:0.85"></span>
+        </span>
+      </div>
+    </template>
+
+    <!-- Channel list -->
+    <template x-if="!$store.slack.error">
+      <div>
+        <template x-if="$store.slack.loading && $store.slack.allServerChannels.length === 0">
+          <div class="slack-info-row muted">
+            <span class="slack-info-icon">…</span>
+            <span>Connecting to Slack…</span>
+          </div>
+        </template>
+
+        <template x-if="!$store.slack.loading && $store.slack.displayedChannels.length === 0">
+          <div class="slack-info-row muted">
+            <span class="slack-info-icon">ℹ</span>
+            <span>No channels found.</span>
+          </div>
+        </template>
+
+        <ul class="slack-channel-list" x-show="$store.slack.displayedChannels.length > 0">
+          <template x-for="ch in $store.slack.displayedChannels" :key="ch.id">
+            <li
+              class="slack-channel-item"
+              @click="$store.slack.openChannel(ch)"
+              :title="'Ask agent to read #' + ch.name"
+            >
+              <span class="slack-hash">#</span>
+              <span class="slack-channel-name" x-text="ch.name"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script type="module">
+import { createStore } from "/js/AlpineStore.js";
+import { callJsonApi } from "/js/api.js";
+
+createStore("slack", {
+  allServerChannels: [],
+  watchedChannels: [],
+  serverName: "Slack",
+  connected: false,
+  loading: false,
+  error: null,
+  errorTitle: "",
+  botUserId: "",
+
+  get displayedChannels() {
+    if (!this.watchedChannels || this.watchedChannels.length === 0) {
+      return this.allServerChannels;
+    }
+    const ids = new Set(this.watchedChannels);
+    return this.allServerChannels.filter(ch => ids.has(ch.id));
+  },
+
+  async init() {
+    const sidebar = Alpine.store("sidebar");
+    if (sidebar && !("slack" in sidebar.sectionStates)) {
+      sidebar.sectionStates.slack = true;
+      sidebar.persistSectionStates();
+    }
+    await this.refresh();
+  },
+
+  async refresh() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = null;
+    this.errorTitle = "";
+
+    try {
+      const data = await callJsonApi("/plugins/parley/slack_channels");
+
+      if (data && data.not_configured) {
+        // ponytail: re-check once when settings are saved
+        document.addEventListener("settings-updated", () => this.init(), { once: true });
+        return;
+      }
+
+      document.getElementById("slack-panel").style.display = "block";
+
+      if (data && data.ok) {
+        this.allServerChannels = data.channels || [];
+        this.watchedChannels = data.watched_channels || [];
+        this.serverName = data.server_name || "Slack";
+        this.botUserId = data.bot_user_id || "";
+        this.connected = true;
+      } else {
+        this.errorTitle = "Slack error";
+        this.error = (data && data.error) || "Unknown error";
+      }
+    } catch (e) {
+      document.getElementById("slack-panel").style.display = "block";
+      this.errorTitle = "Slack error";
+      this.error = e?.message || String(e);
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  openPicker() {
+    Alpine.store("channelPicker").show({
+      title: "Slack Channels",
+      channels: this.allServerChannels,
+      watchedIds: this.watchedChannels,
+      onSave: async (ids) => {
+        const data = await callJsonApi("/plugins/parley/slack_update_channels", { watched_channels: ids });
+        if (!data.ok) throw new Error(data.error || "Save failed");
+        this.watchedChannels = ids;
+      },
+      onRefresh: async () => {
+        await this.refresh();
+        return this.allServerChannels;
+      },
+    });
+  },
+
+  openChannel(ch) {
+    if (window._platformCV) {
+      window._platformCV.openChannel(ch.id, ch.name, this.serverName, "slack", this.botUserId);
+    }
+  },
+});
+</script>

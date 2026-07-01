@@ -1,0 +1,308 @@
+<!-- Parley (Revolt) channel panel — injected above the Chats list in the sidebar.
+     Hidden automatically when Revolt is not configured. -->
+<div
+  id="parley-panel"
+  x-data
+  x-init="$store.parley.init()"
+  style="display:none"
+>
+  <style>
+    #parley-panel {
+      flex-shrink: 0;
+    }
+
+    .parley-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-right: 8px;
+    }
+
+    #parley-panel .parley-header {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .parley-status-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-left: 5px;
+      background: var(--color-border, #555);
+      vertical-align: middle;
+      transition: background 0.3s;
+    }
+    .parley-status-dot.live  { background: #4caf50; }
+    .parley-status-dot.error { background: #e53935; }
+
+    .parley-channel-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 6px 0;
+    }
+
+    .parley-channel-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px 4px 18px;
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 1px 4px;
+      font-size: 0.88rem;
+      color: var(--color-text-muted);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .parley-channel-item:hover {
+      background: var(--color-background-hover, rgba(255,255,255,0.06));
+      color: var(--color-text);
+    }
+    .parley-hash {
+      font-weight: 600;
+      opacity: 0.5;
+      font-size: 0.9em;
+      flex-shrink: 0;
+    }
+    .parley-channel-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .parley-info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 4px 14px 8px 14px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .parley-info-row.error { color: #e57373; }
+    .parley-info-row.muted { color: var(--color-text-muted); opacity: 0.7; }
+    .parley-info-icon { flex-shrink: 0; font-style: normal; }
+
+    .parley-add-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1;
+      opacity: 0.65;
+      transition: opacity 0.15s;
+    }
+    .parley-add-btn:hover { opacity: 1; }
+  </style>
+
+  <!-- Header row -->
+  <div class="parley-header-row">
+    <h3
+      class="section-header section-header-collapsible parley-header"
+      @click="$store.sidebar.toggleSection('parley')"
+      x-effect="$store.sidebar.isSectionOpen('parley')
+        ? $el.classList.remove('collapsed')
+        : $el.classList.add('collapsed')"
+    >
+      <span x-text="$store.parley.serverName || 'Parley'"></span>
+      <span
+        class="parley-status-dot"
+        :class="$store.parley.connected ? 'live' : ($store.parley.error ? 'error' : '')"
+      ></span>
+      <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M8 4l8 8-8 8" />
+      </svg>
+    </h3>
+
+    <button
+      class="parley-add-btn"
+      @click.stop="$store.parley.openPicker()"
+      title="Select watched channels"
+    >＋</button>
+  </div>
+
+  <!-- Collapsible body -->
+  <div
+    class="collapse"
+    id="parley-collapse"
+    x-effect="(() => {
+      const c = bootstrap.Collapse.getOrCreateInstance($el, { toggle: false });
+      $store.sidebar.isSectionOpen('parley') ? c.show() : c.hide();
+    })()"
+  >
+    <!-- Error state with actionable detail -->
+    <template x-if="$store.parley.error">
+      <div class="parley-info-row error">
+        <span class="parley-info-icon">⚠</span>
+        <span>
+          <strong x-text="$store.parley.errorTitle"></strong><br>
+          <span x-text="$store.parley.error" style="opacity:0.85"></span>
+          <template x-if="$store.parley.errorHint">
+            <span><br><em x-text="$store.parley.errorHint" style="opacity:0.7"></em></span>
+          </template>
+        </span>
+      </div>
+    </template>
+
+    <!-- Channel list -->
+    <template x-if="!$store.parley.error">
+      <div>
+        <template x-if="$store.parley.loading && $store.parley.allServerChannels.length === 0">
+          <div class="parley-info-row muted">
+            <span class="parley-info-icon">…</span>
+            <span>Connecting to Parley…</span>
+          </div>
+        </template>
+
+        <template x-if="!$store.parley.loading && $store.parley.displayedChannels.length === 0">
+          <div class="parley-info-row muted">
+            <span class="parley-info-icon">ℹ</span>
+            <span>No text channels found in this server.</span>
+          </div>
+        </template>
+
+        <ul class="parley-channel-list" x-show="$store.parley.displayedChannels.length > 0">
+          <template x-for="ch in $store.parley.displayedChannels" :key="ch.id">
+            <li
+              class="parley-channel-item"
+              @click="$store.parley.openChannel(ch)"
+              :title="'Ask agent to read #' + ch.name"
+            >
+              <span class="parley-hash">#</span>
+              <span class="parley-channel-name" x-text="ch.name"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </template>
+  </div>
+</div>
+
+<script type="module">
+import { createStore } from "/js/AlpineStore.js";
+import { callJsonApi } from "/js/api.js";
+
+createStore("parley", {
+  allServerChannels: [],
+  watchedChannels: [],
+  serverName: "Parley",
+  connected: false,
+  loading: false,
+  error: null,
+  errorTitle: "",
+  errorHint: "",
+
+  get displayedChannels() {
+    if (!this.watchedChannels || this.watchedChannels.length === 0) {
+      return this.allServerChannels;
+    }
+    const ids = new Set(this.watchedChannels);
+    return this.allServerChannels.filter(ch => ids.has(ch.id));
+  },
+
+  async init() {
+    // toggleSection/isSectionOpen silently no-op on unknown keys, so we must
+    // register 'parley' in sectionStates before touching the collapse.
+    const sidebar = Alpine.store("sidebar");
+    if (sidebar && !("parley" in sidebar.sectionStates)) {
+      sidebar.sectionStates.parley = true; // default: open
+      sidebar.persistSectionStates();
+    }
+    await this.refresh();
+  },
+
+  async refresh() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = null;
+    this.errorTitle = "";
+    this.errorHint = "";
+
+    try {
+      const data = await callJsonApi("/plugins/parley/channels");
+
+      if (data && data.not_configured) {
+        // ponytail: re-check once when settings are saved
+        document.addEventListener("settings-updated", () => this.init(), { once: true });
+        return;
+      }
+
+      document.getElementById("parley-panel").style.display = "block";
+
+      if (data && data.ok) {
+        this.allServerChannels = data.channels || [];
+        this.watchedChannels = data.watched_channels || [];
+        this.serverName = data.server_name || "Parley";
+        this.connected = true;
+      } else {
+        this._setError(data?.error || "Unknown error from backend.");
+      }
+    } catch (e) {
+      this._setError(e?.message || String(e));
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  openPicker() {
+    Alpine.store("channelPicker").show({
+      channels: this.allServerChannels,
+      watchedIds: this.watchedChannels,
+      onSave: async (ids) => {
+        const data = await callJsonApi("/plugins/parley/update_channels", { watched_channels: ids });
+        if (!data.ok) throw new Error(data.error || "Save failed");
+        this.watchedChannels = ids;
+      },
+      onRefresh: async () => {
+        await this.refresh();
+        return this.allServerChannels;
+      },
+    });
+  },
+
+  _setError(raw) {
+    this.connected = false;
+    this.allServerChannels = [];
+
+    const msg = String(raw || "Unknown error");
+
+    if (msg.includes("API endpoint not found")) {
+      this.errorTitle = "Plugin API not registered";
+      this.error = "The revolt/channels handler was not found.";
+      this.errorHint = "Check that revolt/api/channels.py is deployed and Agent Zero has restarted.";
+    } else if (msg.includes("ECONNREFUSED") || msg.includes("Cannot connect") || msg.includes("Connection refused")) {
+      this.errorTitle = "Cannot reach Parley";
+      this.error = "Connection refused to the Revolt server.";
+      this.errorHint = "Verify Parley is running and the URL in default_config.yaml is correct.";
+    } else if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("Invalid credentials") || msg.includes("rejected")) {
+      this.errorTitle = "Authentication failed";
+      this.error = msg.length > 180 ? msg.slice(0, 177) + "…" : msg;
+      this.errorHint = "Check the bot token in the Revolt plugin config.";
+    } else if (msg.includes("404") || msg.includes("NotFound")) {
+      this.errorTitle = "Server not found";
+      this.error = "The configured server ID does not exist on Parley.";
+      this.errorHint = "Verify server_id in default_config.yaml.";
+    } else if (msg.includes("Cannot reach Parley backend")) {
+      this.errorTitle = "Backend unreachable";
+      this.error = "The plugin API endpoint returned no response.";
+      this.errorHint = "Make sure the revolt plugin is enabled and Agent Zero restarted after deploy.";
+    } else {
+      this.errorTitle = "Parley error";
+      this.error = msg.length > 120 ? msg.slice(0, 117) + "…" : msg;
+      this.errorHint = "Check Agent Zero logs for details.";
+    }
+  },
+
+  openChannel(ch) {
+    if (window._parleyCV) {
+      window._parleyCV.openChannel(ch.id, ch.name, this.serverName);
+    }
+  },
+});
+</script>

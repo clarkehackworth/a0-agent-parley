@@ -1,0 +1,669 @@
+<html>
+<head>
+  <title>Parley (Revolt) Config</title>
+  <style>
+    /* Channel picker modal — self-contained copy so this page works in its iframe */
+    .cfg-cp-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cfg-cp-backdrop {
+      position: absolute; inset: 0; background: rgba(0,0,0,.55);
+    }
+    .cfg-cp-panel {
+      position: relative; z-index: 1;
+      background: var(--color-panel, #1a1a2e);
+      border: 1px solid var(--color-border, #3a3a55);
+      border-radius: 10px; width: 300px; max-height: 65vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    }
+    .cfg-cp-header {
+      padding: 10px 12px 10px 16px; font-weight: 600; font-size: .9rem;
+      border-bottom: 1px solid var(--color-border,#333); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cfg-cp-refresh {
+      background: none; border: none; cursor: pointer;
+      color: var(--color-text-muted); padding: 2px 6px;
+      border-radius: 4px; font-size: .9rem; opacity: .65;
+    }
+    .cfg-cp-refresh:hover { opacity: 1; }
+    .cfg-cp-refresh:disabled { opacity: .35; cursor: default; }
+    .cfg-cp-spinning { animation: cfg-spin .9s linear infinite; }
+    @keyframes cfg-spin { to { transform: rotate(360deg); } }
+    .cfg-cp-all {
+      padding: 10px 16px 8px;
+      border-bottom: 1px solid var(--color-border,#2a2a40); flex-shrink: 0;
+    }
+    .cfg-cp-all label {
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; font-size: .85rem;
+      color: var(--color-text,#ccc); user-select: none;
+    }
+    .cfg-cp-list { overflow-y: auto; flex: 1; padding: 6px 0; }
+    .cfg-cp-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 16px; cursor: pointer;
+      font-size: .85rem; color: var(--color-text-muted,#999);
+      transition: background .1s;
+    }
+    .cfg-cp-item:hover { background: var(--color-background-hover,rgba(255,255,255,.05)); }
+    .cfg-cp-disabled { opacity: .4; cursor: default; pointer-events: none; }
+    .cfg-cp-footer {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--color-border,#333); flex-shrink: 0;
+    }
+    .cfg-ch-btn {
+      font-size: 12px; padding: 5px 12px;
+    }
+    .nav {
+      display: flex;
+      padding-left: 0;
+      margin: 0 0 1rem 0;
+      list-style: none;
+      border-bottom: 1px solid var(--color-border);
+      gap: 0.25rem;
+    }
+    .nav-link {
+      font-family: "Rubik", Arial, Helvetica, sans-serif;
+      border: 1px solid transparent;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+      padding: 0.4rem 0.7rem;
+      background: transparent;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .nav-link.active {
+      color: var(--color-text-primary);
+      border-color: var(--color-border);
+      border-bottom-color: transparent;
+      background: var(--color-background);
+    }
+  </style>
+</head>
+
+<body>
+<!-- ── Inline channel-picker store (self-contained for this iframe) ──────── -->
+<script>
+  function _registerCfgPicker() {
+    Alpine.store('cfgPicker', {
+      open: false, title: '', allChannels: true,
+      channels: [], saving: false, refreshing: false,
+      _onSave: null, _onRefresh: null,
+
+      show(opts) {
+        this.title      = opts.title || 'Watched Channels';
+        this._onSave    = opts.onSave;
+        this._onRefresh = opts.onRefresh;
+        var watched = opts.watchedIds || [];
+        this.allChannels = watched.length === 0;
+        this._apply(opts.channels || [], new Set(watched));
+        this.open = true;
+      },
+      close() { this.open = false; },
+      toggle(id) {
+        var ch = this.channels.find(function(c){ return c.id === id; });
+        if (ch) ch.selected = !ch.selected;
+      },
+      async save() {
+        if (!this._onSave || this.saving) return;
+        var ids = this.allChannels
+          ? []
+          : this.channels.filter(function(c){ return c.selected; }).map(function(c){ return c.id; });
+        this.saving = true;
+        try {
+          await this._onSave(ids);
+          this.open = false;
+        } catch(e) {
+          // leave open; caller shows its own error
+        } finally {
+          this.saving = false;
+        }
+      },
+      async refresh() {
+        if (!this._onRefresh || this.refreshing) return;
+        this.refreshing = true;
+        try {
+          var updated = await this._onRefresh();
+          if (Array.isArray(updated)) {
+            var draft = new Set(this.channels.filter(function(c){ return c.selected; }).map(function(c){ return c.id; }));
+            this._apply(updated, draft.size ? draft : null);
+          }
+        } finally {
+          this.refreshing = false;
+        }
+      },
+      _apply(list, selectedIds) {
+        this.channels = list.map(function(ch) {
+          return Object.assign({}, ch, {
+            selected: selectedIds === null || selectedIds.has(ch.id),
+          });
+        });
+      },
+    });
+  }
+  if (globalThis.Alpine) _registerCfgPicker();
+  else document.addEventListener('alpine:init', _registerCfgPicker);
+
+  // Summary text for watched_channels (array or comma-string)
+  window._chSummary = function(val) {
+    var ids = Array.isArray(val)
+      ? val.filter(Boolean)
+      : (val || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (!ids.length) return 'All channels';
+    return ids.length + ' channel' + (ids.length === 1 ? '' : 's') + ' selected';
+  };
+</script>
+
+<!-- ── Picker modal ────────────────────────────────────────────────────────── -->
+<div x-data x-cloak>
+  <template x-if="$store.cfgPicker.open">
+    <div class="cfg-cp-overlay">
+      <div class="cfg-cp-backdrop" @click="$store.cfgPicker.close()"></div>
+      <div class="cfg-cp-panel">
+
+        <div class="cfg-cp-header">
+          <span x-text="$store.cfgPicker.title"></span>
+          <button class="cfg-cp-refresh"
+                  :class="{ 'cfg-cp-spinning': $store.cfgPicker.refreshing }"
+                  :disabled="$store.cfgPicker.refreshing"
+                  @click="$store.cfgPicker.refresh()"
+                  title="Refresh channel list">⟳</button>
+        </div>
+
+        <div class="cfg-cp-all">
+          <label>
+            <input type="checkbox" x-model="$store.cfgPicker.allChannels" />
+            All channels
+          </label>
+        </div>
+
+        <div class="cfg-cp-list">
+          <template x-for="ch in $store.cfgPicker.channels" :key="ch.id">
+            <label class="cfg-cp-item"
+                   :class="{ 'cfg-cp-disabled': $store.cfgPicker.allChannels }">
+              <input type="checkbox"
+                     :checked="ch.selected"
+                     :disabled="$store.cfgPicker.allChannels"
+                     @change="$store.cfgPicker.toggle(ch.id)" />
+              <span>#<span x-text="ch.name"></span></span>
+            </label>
+          </template>
+        </div>
+
+        <div class="cfg-cp-footer">
+          <button class="button cancel" @click="$store.cfgPicker.close()">Cancel</button>
+          <button class="button confirm"
+                  :disabled="$store.cfgPicker.saving"
+                  @click="$store.cfgPicker.save()"
+                  x-text="$store.cfgPicker.saving ? 'Saving…' : 'Save'"></button>
+        </div>
+
+      </div>
+    </div>
+  </template>
+</div>
+
+<!-- ── Config form ─────────────────────────────────────────────────────────── -->
+  <div x-data="{ tab: 'revolt' }" x-init="if(config){config.discord=config.discord||{};config.slack=config.slack||{};}">
+    <template x-if="config">
+      <div class="plugin-config-page">
+
+        <!-- ── Tabs ──────────────────────────────────────────────────────── -->
+        <ul class="nav nav-tabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: tab === 'revolt' }"
+                    type="button" role="tab" @click="tab='revolt'">
+              Revolt / Stoat
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: tab === 'discord' }"
+                    type="button" role="tab" @click="tab='discord'">
+              Discord
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: tab === 'slack' }"
+                    type="button" role="tab" @click="tab='slack'">
+              Slack
+            </button>
+          </li>
+        </ul>
+
+        <!-- ── Revolt ────────────────────────────────────────────────────── -->
+        <div x-show="tab==='revolt'">
+        <div class="section-title">Parley — Revolt Bot Connection</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Server URL</div>
+            <div class="field-description">Base URL of your Revolt instance (e.g. http://stoat.lan:13080).</div>
+          </div>
+          <div class="field-control">
+            <input type="text" x-model="config.url" placeholder="http://stoat.lan:13080" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Bot Token</div>
+            <div class="field-description">Token from your Revolt bot settings page.</div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.bot_token" placeholder="••••••••" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Bot ID</div>
+            <div class="field-description">The bot's user ID — used to filter the bot's own messages from the listener.</div>
+          </div>
+          <div class="field-control">
+            <input type="text" x-model="config.bot_id" placeholder="01XXXXXXXXXXXXXXXXXXXXXXXXX" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Server ID</div>
+            <div class="field-description">Revolt server (guild) ID to connect to.</div>
+          </div>
+          <div class="field-control">
+            <input type="text" x-model="config.server_id" placeholder="01XXXXXXXXXXXXXXXXXXXXXXXXX" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Watched Channels</div>
+            <div class="field-description">
+              Channels the listener responds to. Leave all unchecked to respond to every channel.
+            </div>
+          </div>
+          <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button type="button" class="button cfg-ch-btn"
+                      @click="window._openWatchedPicker('revolt', config, $el)">
+                Choose channels…
+              </button>
+              <span style="font-size:12px;opacity:.6"
+                    x-text="window._chSummary(config.watched_channels)"></span>
+            </div>
+            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:1rem">Listener Options</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Auto-start Listener</div>
+            <div class="field-description">Start the WebSocket listener automatically when Agent Zero launches.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.auto_start" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Recent Message Limit</div>
+            <div class="field-description">How many recent messages to anchor the context window on.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="1" max="100" x-model.number="config.recent_limit" placeholder="25" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Search Backfill Limit</div>
+            <div class="field-description">How many search-backfill messages to include for historical context.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="0" max="100" x-model.number="config.search_limit" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Enable Shell Commands</div>
+            <div class="field-description">Allow Agent Zero to run shell commands when triggered by a chat message.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.enable_commands" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Commands Password</div>
+            <div class="field-description">If set, messages must contain this password to permit shell commands.</div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.commands_password" placeholder="Leave empty to allow all messages" />
+          </div>
+        </div>
+
+        </div><!-- /tab revolt -->
+
+        <!-- ── Discord ────────────────────────────────────────────────────── -->
+        <div x-show="tab==='discord'">
+        <div class="section-title">🎮 Discord Bot Connection</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Bot Token</div>
+            <div class="field-description">
+              Token from your Discord application's Bot page (discord.com/developers).
+              Enable the <strong>Message Content</strong> privileged intent or the bot
+              cannot read message content from the gateway.
+            </div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.discord.bot_token"
+                   placeholder="Paste your Discord bot token (leave empty to disable)" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Guild (Server) ID</div>
+            <div class="field-description">
+              Your Discord server's ID. Right-click the server icon → Copy Server ID
+              (requires Developer Mode).
+            </div>
+          </div>
+          <div class="field-control">
+            <input type="text" x-model="config.discord.guild_id" placeholder="1234567890123456789" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Watched Channels</div>
+            <div class="field-description">
+              Channels the listener responds to. Requires bot token and guild ID to be saved first.
+            </div>
+          </div>
+          <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button type="button" class="button cfg-ch-btn"
+                      @click="window._openWatchedPicker('discord', config, $el)">
+                Choose channels…
+              </button>
+              <span style="font-size:12px;opacity:.6"
+                    x-text="window._chSummary(config.discord.watched_channels)"></span>
+            </div>
+            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:1rem">Discord Listener Options</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Auto-start Listener</div>
+            <div class="field-description">Connect to the Discord Gateway automatically when Agent Zero launches.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.discord.auto_start" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Recent Message Limit</div>
+            <div class="field-description">Recent messages included as context when the bot is @mentioned.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="1" max="100" x-model.number="config.discord.recent_limit" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Search Backfill Limit</div>
+            <div class="field-description">How many search-backfill messages to include for historical context.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="0" max="100" x-model.number="config.discord.search_limit" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Enable Shell Commands</div>
+            <div class="field-description">Allow Agent Zero to run shell commands when triggered by a Discord message.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.discord.enable_commands" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Commands Password</div>
+            <div class="field-description">If set, messages must contain this password to permit shell commands.</div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.discord.commands_password" placeholder="Leave empty to allow all messages" />
+          </div>
+        </div>
+
+        </div><!-- /tab discord -->
+
+        <!-- ── Slack ──────────────────────────────────────────────────────── -->
+        <div x-show="tab==='slack'">
+        <div class="section-title">💬 Slack Bot Connection</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Bot Token</div>
+            <div class="field-description">
+              OAuth token for your Slack app (starts with <code>xoxb-</code>). Found under
+              <em>OAuth &amp; Permissions</em> in your app at api.slack.com.
+              Leave empty to disable Slack integration.
+            </div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.slack.bot_token"
+                   placeholder="xoxb-... (leave empty to disable)" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">App Token (Socket Mode)</div>
+            <div class="field-description">
+              App-level token (starts with <code>xapp-</code>) for the Socket Mode listener.
+              Generate one under <em>Basic Information → App-Level Tokens</em>.
+            </div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.slack.app_token" placeholder="xapp-..." />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Watched Channels</div>
+            <div class="field-description">
+              Channels the listener responds to. Requires bot token to be saved first.
+            </div>
+          </div>
+          <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button type="button" class="button cfg-ch-btn"
+                      @click="window._openWatchedPicker('slack', config, $el)">
+                Choose channels…
+              </button>
+              <span style="font-size:12px;opacity:.6"
+                    x-text="window._chSummary(config.slack.watched_channels)"></span>
+            </div>
+            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:1rem">Slack Listener Options</div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Auto-start Listener</div>
+            <div class="field-description">Connect via Socket Mode automatically when Agent Zero launches.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.slack.auto_start" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Recent Message Limit</div>
+            <div class="field-description">Recent messages included as context when the bot is @mentioned.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="1" max="100" x-model.number="config.slack.recent_limit" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Search Backfill Limit</div>
+            <div class="field-description">How many search-backfill messages to include for historical context.</div>
+          </div>
+          <div class="field-control">
+            <input type="number" min="0" max="100" x-model.number="config.slack.search_limit" placeholder="15" />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Enable Shell Commands</div>
+            <div class="field-description">Allow Agent Zero to run shell commands when triggered by a Slack message.</div>
+          </div>
+          <div class="field-control">
+            <label class="toggle">
+              <input type="checkbox" x-model="config.slack.enable_commands" />
+              <span class="toggler"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Commands Password</div>
+            <div class="field-description">If set, messages must contain this password to permit shell commands.</div>
+          </div>
+          <div class="field-control">
+            <input type="password" x-model="config.slack.commands_password" placeholder="Leave empty to allow all messages" />
+          </div>
+        </div>
+
+        </div><!-- /tab slack -->
+
+      </div>
+    </template>
+  </div>
+
+<!-- ── Picker logic ────────────────────────────────────────────────────────── -->
+<script type="module">
+import { callJsonApi } from "/js/api.js";
+
+const _PLATFORMS = {
+  revolt:  { channelsUrl: 'channels',         updateUrl: 'update_channels',         title: 'Revolt Watched Channels',  cfgObj: (c) => c,        },
+  discord: { channelsUrl: 'discord_channels',  updateUrl: 'discord_update_channels', title: 'Discord Watched Channels', cfgObj: (c) => c.discord, },
+  slack:   { channelsUrl: 'slack_channels',    updateUrl: 'slack_update_channels',   title: 'Slack Watched Channels',   cfgObj: (c) => c.slack,   },
+};
+
+window._openWatchedPicker = async function(platform, config, btn) {
+  const p        = _PLATFORMS[platform];
+  const fieldCtl = btn.closest('.field-control');
+  const errEl    = fieldCtl.querySelector('.cfg-ch-error');
+  const origText = btn.textContent;
+
+  errEl.style.display = 'none';
+  errEl.textContent   = '';
+  btn.disabled        = true;
+  btn.textContent     = 'Loading…';
+
+  try {
+    const data = await callJsonApi(`/plugins/parley/${p.channelsUrl}`);
+
+    if (data.not_configured) {
+      const hint = {
+        revolt:  'Save your bot token and server ID first.',
+        discord: 'Save your bot token and guild ID first.',
+        slack:   'Save your bot token first.',
+      }[platform];
+      throw new Error(`${platform.charAt(0).toUpperCase() + platform.slice(1)} is not configured — ${hint}`);
+    }
+    if (!data.ok) {
+      throw new Error(data.error || `Cannot connect to ${platform} server.`);
+    }
+
+    const textChannels = (data.channels || []).filter(c => c.type === 'TextChannel');
+    if (!textChannels.length) {
+      throw new Error('No text channels found. Check the bot has access to at least one channel.');
+    }
+
+    const cfgObj     = p.cfgObj(config);
+    const currentVal = cfgObj.watched_channels;
+    const watchedIds = Array.isArray(currentVal)
+      ? currentVal.filter(Boolean)
+      : (currentVal || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    Alpine.store('cfgPicker').show({
+      title:    p.title,
+      channels: textChannels,
+      watchedIds,
+
+      onSave: async (ids) => {
+        const res = await callJsonApi(`/plugins/parley/${p.updateUrl}`, { watched_channels: ids });
+        if (!res.ok) throw new Error(res.error || 'Save failed');
+        // Update reactive config so the x-text summary re-renders
+        cfgObj.watched_channels = ids;
+      },
+
+      onRefresh: async () => {
+        const r = await callJsonApi(`/plugins/parley/${p.channelsUrl}`);
+        if (!r.ok) throw new Error(r.error || 'Refresh failed');
+        return (r.channels || []).filter(c => c.type === 'TextChannel');
+      },
+    });
+
+  } catch (e) {
+    errEl.textContent   = e.message || String(e);
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = origText;
+  }
+};
+</script>
+
+</body>
+</html>

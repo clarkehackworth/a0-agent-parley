@@ -1,0 +1,110 @@
+name: parley
+title: Parley Chat Integration
+description: Bring Agent Zero into Stoat/Revolt, Discord, and Slack as a teammate, not a bolted-on bot. It builds smart context-aware conversations from channel history, so you don't have to repeat yourself, and replies right in-thread when @mentioned.
+version: 1.0.0
+settings_sections:
+  - external
+per_project_config: false
+per_agent_config: false
+always_enabled: false
+
+# Connection credentials — surfaced in `hermes config` and overriding default_config.yaml.
+requires_env:
+  - name: REVOLT_URL
+    description: "Base URL of your Revolt instance (e.g. http://stoat.lan:13080)"
+    prompt: "Revolt server URL"
+    password: false
+  - name: REVOLT_BOT_TOKEN
+    description: "Token from your Revolt bot settings page"
+    prompt: "Revolt bot token"
+    password: true
+  - name: REVOLT_BOT_ID
+    description: "The bot's user ID (used to filter the bot's own messages)"
+    prompt: "Revolt bot ID"
+    password: false
+  - name: REVOLT_SERVER_ID
+    description: "ID of the Revolt server (guild) to connect to"
+    prompt: "Revolt server ID"
+    password: false
+
+optional_env:
+  - name: REVOLT_AUTO_START
+    description: "Start the WebSocket listener automatically with Agent Zero (true/false, default: true)"
+    prompt: "Auto-start listener? (true/false)"
+    password: false
+  - name: REVOLT_WATCHED_CHANNELS
+    description: "Comma-separated Revolt channel IDs the listener should respond to. Empty = all channels in the server."
+    prompt: "Watched channel IDs (comma-separated, or empty for all)"
+    password: false
+  - name: REVOLT_RECENT_LIMIT
+    description: "How many recent messages to anchor the context window on (default: 25)"
+    prompt: "Recent message limit"
+    password: false
+  - name: REVOLT_SEARCH_LIMIT
+    description: "How many search-backfill messages to include for historical context (default: 15)"
+    prompt: "Search backfill limit"
+    password: false
+  - name: REVOLT_MAX_AGE_DAYS
+    description: "Drop backfill hits older than this many days (default: 30, 0 = no limit)"
+    prompt: "Backfill max age in days (0 = unlimited)"
+    password: false
+  - name: REVOLT_NEIGHBORS
+    description: "Messages to fetch either side of each top backfill hit for context (default: 2)"
+    prompt: "Neighbor messages per backfill hit"
+    password: false
+  - name: REVOLT_EXPAND_TOP
+    description: "How many top backfill hits to expand with neighbor messages (default: 3)"
+    prompt: "Top hits to expand with neighbors"
+    password: false
+  - name: REVOLT_INCLUDE_FIRST
+    description: "Include the channel's first (oldest) message in every context window (default: true)"
+    prompt: "Include first channel message (true/false)"
+    password: false
+  - name: REVOLT_INCLUDE_PINNED
+    description: "Include pinned messages in every context window (default: true)"
+    prompt: "Include pinned messages (true/false)"
+    password: false
+
+  # Discord — all optional; configure via the Settings UI instead
+  - name: DISCORD_BOT_TOKEN
+    description: "Discord bot token (overrides config UI value)"
+    prompt: "Discord bot token"
+    password: true
+  - name: DISCORD_GUILD_ID
+    description: "Discord guild (server) ID"
+    prompt: "Discord guild ID"
+    password: false
+  - name: DISCORD_BOT_ID
+    description: "Discord bot user ID (optional; auto-fetched via /users/@me)"
+    prompt: "Discord bot user ID"
+    password: false
+  - name: DISCORD_AUTO_START
+    description: "Start the Discord listener automatically (true/false, default: true)"
+    prompt: "Auto-start Discord listener? (true/false)"
+    password: false
+  - name: DISCORD_WATCHED_CHANNELS
+    description: "Comma-separated Discord channel IDs to respond to. Empty = all text channels."
+    prompt: "Discord watched channel IDs (comma-separated)"
+    password: false
+
+  # Slack — all optional; configure via the Settings UI instead
+  - name: SLACK_BOT_TOKEN
+    description: "Slack bot token (xoxb-) for Web API calls"
+    prompt: "Slack bot token (xoxb-)"
+    password: true
+  - name: SLACK_APP_TOKEN
+    description: "Slack app-level token (xapp-) for Socket Mode listener"
+    prompt: "Slack app token (xapp-)"
+    password: true
+  - name: SLACK_TEAM_ID
+    description: "Slack workspace/team ID"
+    prompt: "Slack team ID"
+    password: false
+  - name: SLACK_AUTO_START
+    description: "Start the Slack listener automatically (true/false, default: true)"
+    prompt: "Auto-start Slack listener? (true/false)"
+    password: false
+  - name: SLACK_WATCHED_CHANNELS
+    description: "Comma-separated Slack channel IDs to respond to. Empty = all channels."
+    prompt: "Slack watched channel IDs (comma-separated)"
+    password: false

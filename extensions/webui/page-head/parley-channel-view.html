@@ -1,0 +1,530 @@
+<style>
+  #parley-cv {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 250px;
+    z-index: 1050;
+    background: var(--color-bg, #1e1e2e);
+    border-left: 1px solid var(--color-border, #333);
+    flex-direction: column;
+    font-family: inherit;
+  }
+  #parley-cv.open { display: flex; }
+
+  .parley-cv-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--color-border, #333);
+    flex-shrink: 0;
+    background: var(--color-panel, #161622);
+  }
+  .parley-cv-server {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #888);
+  }
+  .parley-cv-title {
+    font-weight: 600;
+    font-size: 1rem;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .parley-cv-keywords {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary, #888);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Bridge toggle */
+  .parley-bridge-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #999);
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--color-border, #444);
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .parley-bridge-toggle:hover { border-color: var(--color-accent, #7c8cff); }
+  .parley-bridge-toggle.active {
+    color: #4caf50;
+    border-color: #4caf50;
+    background: rgba(76,175,80,0.08);
+  }
+  .parley-bridge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .parley-bridge-toggle.active .parley-bridge-dot {
+    animation: parley-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes parley-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .parley-cv-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary, #888);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .parley-cv-btn:hover {
+    background: var(--color-bg-hover, rgba(255,255,255,0.07));
+    color: var(--color-text, #eee);
+  }
+  .parley-cv-btn.spinning { animation: parley-cv-spin 0.9s linear infinite; }
+  @keyframes parley-cv-spin { to { transform: rotate(360deg); } }
+
+  .parley-cv-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    scroll-behavior: smooth;
+  }
+  .parley-cv-empty, .parley-cv-loading, .parley-cv-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    font-size: 0.9rem;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+  }
+  .parley-cv-loading { color: var(--color-text-secondary, #888); }
+  .parley-cv-error { color: #e57373; align-items: flex-start; }
+  .parley-cv-empty { color: var(--color-text-secondary, #888); font-style: italic; }
+  .parley-cv-loading-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--color-border, #444);
+    border-top-color: var(--color-accent, #7c8cff);
+    border-radius: 50%;
+    animation: parley-cv-spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .parley-msg {
+    display: flex;
+    flex-direction: column;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: background 0.1s;
+  }
+  .parley-msg:hover { background: var(--color-bg-hover, rgba(255,255,255,0.04)); }
+  .parley-msg.bridged { border-left: 2px solid #4caf50; padding-left: 8px; }
+  .parley-msg-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary, #888);
+    margin-bottom: 1px;
+  }
+  .parley-msg-author { font-weight: 600; color: var(--color-text, #ddd); font-size: 0.85rem; }
+  .parley-msg-time { font-size: 0.72rem; }
+  .parley-msg-ctx { color: var(--color-accent, #7c8cff); font-size: 0.68rem; }
+  .parley-msg-body {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--color-text, #ccc);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .parley-msg-attachment {
+    font-size: 0.78rem;
+    color: var(--color-text-secondary, #888);
+    font-style: italic;
+  }
+  .parley-cv-divider {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--color-text-secondary, #666);
+    padding: 6px 0;
+    border-top: 1px solid var(--color-border, #333);
+    margin: 6px 0;
+  }
+
+  .parley-cv-input-area {
+    display: flex;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--color-border, #333);
+    background: var(--color-panel, #161622);
+    flex-shrink: 0;
+    align-items: flex-end;
+  }
+  .parley-cv-textarea {
+    flex: 1;
+    background: var(--color-input-bg, #2a2a3e);
+    border: 1px solid var(--color-border, #444);
+    border-radius: 8px;
+    color: var(--color-text, #eee);
+    font-size: 0.9rem;
+    font-family: inherit;
+    padding: 8px 12px;
+    resize: none;
+    min-height: 38px;
+    max-height: 120px;
+    outline: none;
+    line-height: 1.4;
+    overflow-y: auto;
+  }
+  .parley-cv-textarea:focus { border-color: var(--color-accent, #7c8cff); }
+  .parley-cv-send-btn {
+    background: #4248f1;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    width: 3.15rem;
+    height: 3.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-end;
+    transition: background-color 0.15s, transform 0.12s;
+  }
+  .parley-cv-send-btn:hover { background: #353bc5; }
+  .parley-cv-send-btn:active { background: #2b309c; transform: translateY(1px) scale(0.98); }
+  .parley-cv-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .parley-cv-send-btn .material-symbols-outlined { font-size: 1.78rem; }
+</style>
+
+<script type="module">
+import { callJsonApi } from "/js/api.js";
+
+// --- State ---
+let _channelId = null;
+let _channelName = null;
+let _serverName = null;
+let _loading = false;
+let _sending = false;
+let _bridgeActive = false;
+let _pollTimer = null;
+let _lastSeenId = null;   // newest message ID we have displayed
+let _ownUserId = null;    // agent's Revolt user ID (don't re-bridge own replies)
+let _displayedIds = new Set();
+
+// --- Build panel ---
+const panel = document.createElement("div");
+panel.id = "parley-cv";
+panel.innerHTML = `
+  <div class="parley-cv-header">
+    <span class="parley-cv-server" id="parley-cv-server"></span>
+    <span class="parley-cv-title" id="parley-cv-title">#channel</span>
+    <span class="parley-cv-keywords" id="parley-cv-keywords"></span>
+    <button class="parley-bridge-toggle" id="parley-bridge-btn" title="Live updates: keep this view refreshed with new Parley messages (does not forward to the agent)">
+      <span class="parley-bridge-dot"></span>
+      <span id="parley-bridge-label">Live updates</span>
+    </button>
+    <button class="parley-cv-btn" id="parley-cv-refresh" title="Refresh messages">⟳</button>
+    <button class="parley-cv-btn" id="parley-cv-close" title="Close">✕</button>
+  </div>
+  <div class="parley-cv-messages" id="parley-cv-messages"></div>
+  <div class="parley-cv-input-area">
+    <textarea class="parley-cv-textarea" id="parley-cv-textarea" placeholder="Message #channel…" rows="1"></textarea>
+    <button class="parley-cv-send-btn" id="parley-cv-send" aria-label="Send message"><span class="material-symbols-outlined">send</span></button>
+  </div>
+`;
+
+function appendPanel() {
+  const attach = () => { document.body.appendChild(panel); _bindEvents(); };
+  document.body ? attach() : document.addEventListener("DOMContentLoaded", attach);
+}
+appendPanel();
+
+// --- Fetch own user ID once ---
+async function ensureOwnUserId() {
+  if (_ownUserId !== null) return;
+  try {
+    const d = await callJsonApi("/plugins/parley/whoami");
+    if (d && d.ok) _ownUserId = d.user_id;
+  } catch (_) {}
+}
+
+// --- Events ---
+function _bindEvents() {
+  document.getElementById("parley-cv-close").addEventListener("click", closePanel);
+  document.getElementById("parley-cv-refresh").addEventListener("click", () => {
+    if (_channelId) loadChannel(_channelId, _channelName, true);
+  });
+  document.getElementById("parley-bridge-btn").addEventListener("click", toggleBridge);
+
+  const ta = document.getElementById("parley-cv-textarea");
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  ta.addEventListener("input", () => {
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+  });
+  document.getElementById("parley-cv-send").addEventListener("click", sendMessage);
+
+  // Close the panel when the user clicks a regular chat in the sidebar
+  document.addEventListener("click", (e) => {
+    if (!panel.classList.contains("open")) return;
+    if (e.target.closest(".chat-container") && !e.target.closest("#parley-panel")) {
+      closePanel();
+    }
+  });
+
+  // Track sidebar width changes so the panel edge follows resizable-sidebar drags
+  const _attachSidebarObserver = () => {
+    const sidebar = document.getElementById("left-panel");
+    if (sidebar) new ResizeObserver(_syncLeft).observe(sidebar);
+  };
+  if (document.getElementById("left-panel")) {
+    _attachSidebarObserver();
+  } else {
+    document.addEventListener("DOMContentLoaded", _attachSidebarObserver, { once: true });
+  }
+}
+
+// --- Public API ---
+export function openChannel(channelId, channelName, serverName) {
+  _channelId = channelId;
+  _channelName = channelName;
+  _serverName = serverName;
+  panel.classList.add("open");
+  _syncLeft();
+  ensureOwnUserId();
+  loadChannel(channelId, channelName, false);
+}
+
+export function closePanel() {
+  panel.classList.remove("open");
+  _stopPolling();
+  _channelId = null;
+}
+
+function _syncLeft() {
+  const sidebar = document.getElementById("left-panel");
+  panel.style.left = (!sidebar || sidebar.classList.contains("hidden")) ? "0" : sidebar.offsetWidth + "px";
+}
+
+// --- Live view updates ---
+// Toggles live polling of the channel so newly arrived messages appear in this
+// view. It does NOT forward anything to the agent — the WebSocket listener is
+// the single ingestion path and responds to @mentions only.
+function toggleBridge() {
+  _bridgeActive = !_bridgeActive;
+  const btn = document.getElementById("parley-bridge-btn");
+  const lbl = document.getElementById("parley-bridge-label");
+  btn.classList.toggle("active", _bridgeActive);
+  lbl.textContent = _bridgeActive ? "Live" : "Live updates";
+  _bridgeActive ? _startPolling() : _stopPolling();
+}
+
+function _startPolling() {
+  _stopPolling();
+  _pollTimer = setInterval(_pollNewMessages, 5000);
+}
+
+function _stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+async function _pollNewMessages() {
+  if (!_channelId || _loading) return;
+  try {
+    const data = await callJsonApi("/plugins/parley/messages", {
+      channel_id: _channelId,
+      recent_limit: 10,
+      search_limit: 0,
+    });
+    if (!data.ok || !data.messages) return;
+
+    const newMsgs = data.messages.filter(m => !_displayedIds.has(m.id));
+    if (newMsgs.length === 0) return;
+
+    // Append new messages to the view
+    const msgArea = document.getElementById("parley-cv-messages");
+    for (const msg of newMsgs) {
+      if (_displayedIds.has(msg.id)) continue;
+      _displayedIds.add(msg.id);
+      _lastSeenId = msg.id;
+      const el = _renderMessage(msg, false, /*newArrival=*/true);
+      msgArea.appendChild(el);
+    }
+    msgArea.scrollTop = msgArea.scrollHeight;
+
+    // NOTE: This panel is view-only. It does NOT forward messages to the agent.
+    // The Revolt WebSocket listener is the single ingestion path and responds
+    // to @mentions only; forwarding here too would double-process every message.
+  } catch (_) {}
+}
+
+// --- Load messages ---
+async function loadChannel(channelId, channelName, isRefresh) {
+  if (_loading) return;
+  _loading = true;
+  _displayedIds = new Set();
+  _lastSeenId = null;
+
+  const msgArea = document.getElementById("parley-cv-messages");
+  const refreshBtn = document.getElementById("parley-cv-refresh");
+  const ta = document.getElementById("parley-cv-textarea");
+
+  document.getElementById("parley-cv-title").textContent = "#" + channelName;
+  document.getElementById("parley-cv-server").textContent = (_serverName || "Parley") + " /";
+  document.getElementById("parley-cv-keywords").textContent = "";
+  ta.placeholder = `Message #${channelName}…`;
+
+  refreshBtn.classList.add("spinning");
+  if (!isRefresh) {
+    msgArea.innerHTML = `<div class="parley-cv-loading">
+      <div class="parley-cv-loading-spinner"></div>Loading messages…
+    </div>`;
+  }
+
+  try {
+    const data = await callJsonApi("/plugins/parley/messages", {
+      channel_id: channelId,
+      recent_limit: 50,
+      search_limit: 15,
+    });
+
+    if (!data.ok) {
+      const detail = data.traceback ? `\n${data.traceback}` : "";
+      msgArea.innerHTML = `<div class="parley-cv-error">⚠ ${_esc(data.error || "Failed to load")}${detail ? `<pre style="font-size:0.7rem;text-align:left;margin-top:8px;opacity:0.7">${_esc(detail)}</pre>` : ""}</div>`;
+      return;
+    }
+
+    const msgs = data.messages || [];
+    if (msgs.length === 0) {
+      msgArea.innerHTML = `<div class="parley-cv-empty">No messages yet in #${_esc(channelName)}</div>`;
+      return;
+    }
+
+    // Separate backfill (context) from recent messages
+    // The API returns them merged/sorted; backfill ones are those before the "recent" window
+    // We detect them by checking if they appear in the first portion when total > recent
+    const recentCount = Math.min(50, msgs.length);
+    const backfillSet = new Set(msgs.slice(0, msgs.length - recentCount).map(m => m.id));
+
+    const keywords = data.keywords || [];
+    if (keywords.length > 0) {
+      document.getElementById("parley-cv-keywords").textContent = "context: " + keywords.join(", ");
+    }
+
+    msgArea.innerHTML = "";
+    let shownDivider = backfillSet.size === 0;
+
+    for (const msg of msgs) {
+      const isCtx = backfillSet.has(msg.id);
+      if (!shownDivider && !isCtx) {
+        const div = document.createElement("div");
+        div.className = "parley-cv-divider";
+        div.textContent = "── recent ──";
+        msgArea.appendChild(div);
+        shownDivider = true;
+      }
+      _displayedIds.add(msg.id);
+      msgArea.appendChild(_renderMessage(msg, isCtx, false));
+    }
+
+    // Track newest message for polling
+    if (msgs.length > 0) _lastSeenId = msgs[msgs.length - 1].id;
+    msgArea.scrollTop = msgArea.scrollHeight;
+  } catch (e) {
+    msgArea.innerHTML = `<div class="parley-cv-error">⚠ ${_esc(String(e))}</div>`;
+  } finally {
+    _loading = false;
+    refreshBtn.classList.remove("spinning");
+  }
+}
+
+function _renderMessage(msg, isCtx, isNew) {
+  const el = document.createElement("div");
+  el.className = "parley-msg" + (isNew ? " bridged" : "");
+  el.dataset.msgId = msg.id;
+
+  const timeMatch = msg.formatted.match(/^\[([^\]]+)\]/);
+  const timeStr = timeMatch ? timeMatch[1] : "";
+
+  let body = "";
+  if (msg.content) {
+    body = `<div class="parley-msg-body">${_esc(msg.content)}</div>`;
+  } else if (msg.attachments > 0) {
+    body = `<div class="parley-msg-attachment">[${msg.attachments} attachment${msg.attachments > 1 ? "s" : ""}]</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="parley-msg-meta">
+      <span class="parley-msg-author">${_esc(msg.author)}</span>
+      <span class="parley-msg-time">${_esc(timeStr)}</span>
+      ${isCtx ? '<span class="parley-msg-ctx">↑ context</span>' : ""}
+    </div>
+    ${body}
+  `;
+  return el;
+}
+
+// --- Send ---
+async function sendMessage() {
+  if (_sending || !_channelId) return;
+  const ta = document.getElementById("parley-cv-textarea");
+  const sendBtn = document.getElementById("parley-cv-send");
+  const content = ta.value.trim();
+  if (!content) return;
+
+  _sending = true;
+  sendBtn.disabled = true;
+  ta.disabled = true;
+
+  try {
+    const data = await callJsonApi("/plugins/parley/send_message", {
+      channel_id: _channelId,
+      content,
+    });
+    if (data.ok) {
+      ta.value = "";
+      ta.style.height = "auto";
+      setTimeout(() => loadChannel(_channelId, _channelName, true), 600);
+    } else {
+      alert("Failed to send: " + (data.error || "unknown error"));
+    }
+  } catch (e) {
+    alert("Send failed: " + e);
+  } finally {
+    _sending = false;
+    sendBtn.disabled = false;
+    ta.disabled = false;
+    ta.focus();
+  }
+}
+
+function _esc(str) {
+  return String(str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+window._parleyCV = { openChannel, closePanel };
+</script>

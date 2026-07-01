@@ -1,0 +1,133 @@
+url: ""
+bot_token: ""
+bot_id: ""
+server_id: ""
+
+# Allow Agent Zero to run shell commands when triggered by a chat message.
+# When false, shell commands are blocked regardless of what the user asks.
+# When true and commands_password is non-empty, the message must contain the
+# password somewhere in its text for commands to be permitted.
+enable_commands: false
+commands_password: ""
+
+# Background WebSocket listener — works without a browser open
+# Set auto_start: true to have the listener start automatically with Agent Zero.
+auto_start: true
+
+# Channels the listener should respond to (by Revolt channel ID).
+# Comma-separated string. Empty = respond to all text channels in the server.
+# Example: "01KW0S7XM0WNQ5J9FAQNYDTKKR, 01KW0S7XM0WNQ5J9FAQNYDTKKQ"
+watched_channels: ""
+
+# How many recent messages to anchor the context window on
+recent_limit: 25
+
+# How many search-backfill messages to include for historical context
+search_limit: 15
+
+# Drop backfill hits older than this many days (0 = no limit)
+max_age_days: 30
+
+# Messages to fetch either side of each top backfill hit for conversational context
+neighbors: 2
+
+# How many top backfill hits to expand with neighbor messages
+expand_top: 3
+
+# Include the channel's first (oldest) message in every context window
+include_first: true
+
+# Include the channel's pinned messages in every context window
+include_pinned: true
+
+# Minimum word length to include in keyword extraction
+min_keyword_length: 4
+
+# Words to always exclude from keyword extraction (stopwords)
+stopwords:
+  - "this"
+  - "that"
+  - "with"
+  - "have"
+  - "from"
+  - "they"
+  - "will"
+  - "been"
+  - "were"
+  - "said"
+  - "each"
+  - "which"
+  - "their"
+  - "there"
+  - "about"
+  - "would"
+  - "these"
+  - "other"
+  - "into"
+  - "then"
+  - "than"
+  - "when"
+  - "what"
+  - "some"
+  - "also"
+  - "like"
+  - "just"
+  - "more"
+  - "very"
+  - "your"
+  - "here"
+  - "could"
+  - "should"
+  - "after"
+  - "before"
+  - "where"
+  - "only"
+  - "over"
+  - "such"
+  - "even"
+  - "back"
+  - "good"
+  - "much"
+  - "well"
+  - "need"
+  - "want"
+  - "make"
+  - "know"
+  - "does"
+  - "done"
+  - "think"
+  - "going"
+  - "dont"
+  - "cant"
+  - "isnt"
+  - "wasnt"
+
+# ── Discord ──────────────────────────────────────────────────────────────────
+# Leave bot_token empty to disable Discord integration entirely.
+# Message Content Intent must be enabled in the Discord developer portal.
+discord:
+  bot_token: ""
+  guild_id: ""
+  bot_id: ""
+  # Comma-separated channel IDs the listener responds to. Empty = all text channels.
+  watched_channels: ""
+  auto_start: true
+  recent_limit: 15
+  search_limit: 15
+  enable_commands: false
+  commands_password: ""
+
+# ── Slack ────────────────────────────────────────────────────────────────────
+# bot_token (xoxb-) for API calls; app_token (xapp-) for Socket Mode listener.
+# Leave bot_token empty to disable Slack integration entirely.
+slack:
+  bot_token: ""
+  app_token: ""
+  team_id: ""
+  # Comma-separated channel IDs the listener responds to. Empty = all channels.
+  watched_channels: ""
+  auto_start: true
+  recent_limit: 15
+  search_limit: 15
+  enable_commands: false
+  commands_password: ""

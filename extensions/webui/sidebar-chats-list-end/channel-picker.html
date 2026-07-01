@@ -1,0 +1,223 @@
+<!-- Generic channel picker overlay — server-agnostic, driven by $store.channelPicker -->
+<div x-data x-cloak>
+  <template x-if="$store.channelPicker.open">
+    <div class="cp-overlay">
+      <div class="cp-backdrop" @click="$store.channelPicker.close()"></div>
+      <div class="cp-panel">
+
+        <div class="cp-header">
+          <span x-text="$store.channelPicker.title"></span>
+          <button
+            class="cp-icon-btn"
+            :class="{ 'cp-spinning': $store.channelPicker.refreshing }"
+            :disabled="$store.channelPicker.refreshing"
+            @click="$store.channelPicker.refresh()"
+            title="Refresh channel list"
+          >⟳</button>
+        </div>
+
+        <div class="cp-all-row">
+          <label>
+            <input type="checkbox" x-model="$store.channelPicker.allChannels" />
+            All channels
+          </label>
+        </div>
+
+        <div class="cp-list">
+          <template x-for="ch in $store.channelPicker.channels" :key="ch.id">
+            <label class="cp-item" :class="{ 'cp-disabled': $store.channelPicker.allChannels }">
+              <input
+                type="checkbox"
+                :checked="ch.selected"
+                :disabled="$store.channelPicker.allChannels"
+                @change="$store.channelPicker.toggle(ch.id)"
+              />
+              <span>#<span x-text="ch.name"></span></span>
+            </label>
+          </template>
+        </div>
+
+        <div class="cp-footer">
+          <button class="button cancel" @click="$store.channelPicker.close()">Cancel</button>
+          <button
+            class="button confirm"
+            :disabled="$store.channelPicker.saving"
+            @click="$store.channelPicker.save()"
+            x-text="$store.channelPicker.saving ? 'Saving…' : 'Save'"
+          ></button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<style>
+  .cp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cp-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .cp-panel {
+    position: relative;
+    background: var(--color-panel, #1a1a2e);
+    border: 1px solid var(--color-border, #3a3a55);
+    border-radius: 10px;
+    width: 300px;
+    max-height: 65vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+  .cp-header {
+    padding: 10px 12px 10px 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--color-border, #333);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .cp-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    opacity: 0.65;
+    transition: opacity 0.15s;
+  }
+  .cp-icon-btn:hover { opacity: 1; }
+  .cp-icon-btn:disabled { opacity: 0.35; cursor: default; }
+  .cp-spinning { animation: cp-spin 0.9s linear infinite; }
+  @keyframes cp-spin { to { transform: rotate(360deg); } }
+
+  .cp-all-row {
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--color-border, #2a2a40);
+    flex-shrink: 0;
+  }
+  .cp-all-row label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--color-text, #ccc);
+    user-select: none;
+  }
+  .cp-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 6px 0;
+  }
+  .cp-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: background 0.1s;
+    font-size: 0.85rem;
+    color: var(--color-text-muted, #999);
+  }
+  .cp-item:hover { background: var(--color-background-hover, rgba(255, 255, 255, 0.05)); }
+  .cp-disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+  .cp-item input[type="checkbox"] { cursor: pointer; flex-shrink: 0; }
+
+  .cp-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--color-border, #333);
+    flex-shrink: 0;
+  }
+</style>
+
+<script type="module">
+import { createStore } from "/js/AlpineStore.js";
+
+createStore("channelPicker", {
+  open: false,
+  title: "Watched Channels",
+  allChannels: true,
+  channels: [],       // [{id, name, type, selected}, ...]
+  saving: false,
+  refreshing: false,
+  _onSave: null,
+  _onRefresh: null,
+
+  // Open the picker.
+  // options.channels    — full list from the server: [{id, name, type}, ...]
+  // options.watchedIds  — currently saved selection; [] means "all channels"
+  // options.onSave      — async (ids: string[]) => void; ids=[] means "all"; throw to abort close
+  // options.onRefresh   — async () => [{id, name, type}]; returns updated channel list
+  // options.title       — optional dialog title
+  show({ channels, watchedIds = [], onSave, onRefresh, title = "Watched Channels" }) {
+    this.title = title;
+    this._onSave = onSave;
+    this._onRefresh = onRefresh;
+    this.allChannels = watchedIds.length === 0;
+    this._applyChannels(channels, new Set(watchedIds));
+    this.open = true;
+  },
+
+  close() {
+    this.open = false;
+  },
+
+  toggle(id) {
+    const ch = this.channels.find(c => c.id === id);
+    if (ch) ch.selected = !ch.selected;
+  },
+
+  async refresh() {
+    if (!this._onRefresh || this.refreshing) return;
+    this.refreshing = true;
+    try {
+      const updated = await this._onRefresh();
+      if (Array.isArray(updated)) {
+        // Preserve current draft selections across refresh
+        const draftSelected = new Set(this.channels.filter(c => c.selected).map(c => c.id));
+        this._applyChannels(updated, draftSelected.size > 0 ? draftSelected : null);
+      }
+    } finally {
+      this.refreshing = false;
+    }
+  },
+
+  async save() {
+    if (!this._onSave || this.saving) return;
+    const ids = this.allChannels ? [] : this.channels.filter(c => c.selected).map(c => c.id);
+    this.saving = true;
+    try {
+      await this._onSave(ids);
+      this.open = false;
+    } catch (_) {
+      // onSave threw — leave picker open so the caller can show its own error
+    } finally {
+      this.saving = false;
+    }
+  },
+
+  _applyChannels(list, selectedIds) {
+    // selectedIds: Set of ids to mark selected, or null to select all
+    this.channels = list.map(ch => ({
+      ...ch,
+      selected: selectedIds === null || selectedIds.has(ch.id),
+    }));
+  },
+});
+</script>
