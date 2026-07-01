@@ -1,3 +1,5 @@
+<img src="docs/logos/dark-256.png" alt="Parley logo" width="96">
+
 # AgentParley — Chat Plugin for Agent Zero
 
 Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Discord, and Slack as a teammate, not a bolted-on bot. It listens for @mentions over WebSocket/Socket Mode, builds smart context-aware conversations from channel history, and replies right in-thread — without any browser or manual polling.
