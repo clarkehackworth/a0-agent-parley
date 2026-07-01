@@ -20,37 +20,22 @@ Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Disco
 
 ## Requirements
 
-- Agent Zero running in Docker (container name `agent-zero` by default)
-- A self-hosted Revolt instance accessible from the container
-- A Revolt bot account with a token
-- Docker accessible via SSH at `docker.lan` (or adjust `deploy.sh`)
+- A running [Agent Zero](https://github.com/frdel/agent-zero) instance
+- At least one of: a self-hosted Revolt/Stoat instance, a Discord bot, or a Slack app
 
 ## Installation
 
-### 1. Clone
+### 1. Install the plugin
 
-```bash
-git clone https://github.com/clarkehackworth/a0-agent-parley.git
-cd a0-agent-parley
+In Agent Zero's web UI, go to **Settings → Plugins → Add Plugin** and paste this repository's URL:
+
+```
+https://github.com/clarkehackworth/a0-agent-parley
 ```
 
-### 2. Deploy to Agent Zero
+Agent Zero clones the plugin and runs `execute.py` automatically to install its Python dependencies (`aiohttp`, `pyyaml`, `httptools`).
 
-```bash
-./deploy.sh
-```
-
-This copies the plugin into the container at `/a0/usr/plugins/revolt/`, then runs `initialize.py` to install Python dependencies (`aiohttp`, `pyyaml`) inside the container's virtualenv.
-
-Add `--restart` to also bounce the container after deploy:
-
-```bash
-./deploy.sh --restart
-```
-
-> **Default target**: `docker -H ssh://docker.lan` / container `agent-zero`. Edit `deploy.sh` if your setup differs.
-
-### 3. Configure credentials
+### 2. Configure credentials
 
 Open Agent Zero's web UI → **Settings** → **Plugins** → **Parley (Revolt)**. Fill in:
 
@@ -88,7 +73,7 @@ Each platform needs a bot account created and invited before AgentParley can con
 3. Under **Event Subscriptions**, subscribe to the `message.channels` (and `message.im` for DMs) bot events, then **Install App to Workspace** and copy the **Bot User OAuth Token** (`SLACK_BOT_TOKEN`) and workspace **Team ID** (`SLACK_TEAM_ID`).
 4. Invite the bot to any channels it should watch with `/invite @yourbot`.
 
-### 4. Enable the plugin
+### 3. Enable the plugin
 
 In the Agent Zero sidebar, enable **Parley (Revolt)**. The WebSocket listener starts automatically (`auto_start: true` by default). The bot is now online.
 
@@ -143,10 +128,18 @@ AgentParley/
 └── tests/
 ```
 
-## Updating
+## Development
 
-Re-run `deploy.sh` after any code change. Add `--restart` if you changed listener startup logic or added new dependencies.
+`deploy.sh` is a convenience script for pushing a local checkout straight into a dev container over SSH, without going through Agent Zero's plugin installer each time.
+
+```bash
+./deploy.sh
+```
+
+This copies the plugin into the container at `/a0/usr/plugins/parley/`, then runs `execute.py` to install Python dependencies inside the container's virtualenv. Add `--restart` to also bounce the container (needed if you changed listener startup logic or added new dependencies):
 
 ```bash
 ./deploy.sh --restart
 ```
+
+> **Default target**: `docker -H ssh://docker.lan` / container `agent-zero`. Edit `deploy.sh` if your setup differs.
