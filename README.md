@@ -9,7 +9,7 @@ Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Disco
 - **Three platforms, one agent** — Stoat/Revolt, Discord, and Slack all wired through the same listener and context-window pipeline
 - **WebSocket / Socket Mode listener** — persistent background connection per platform; responds to @mentions automatically
 - **Context-aware backfill** — combines recent messages, keyword-searched history, pinned messages, and neighbor expansion into a single rich context window
-- **Shell command gating** — commands are disabled by default; when enabled, they can require a password embedded in the request
+- **Shell command gating** — commands are disabled by default; when enabled, they can require a password confirmed via DM before running (see [Password security](#password-security))
 - **DM password challenge** — if a password is set, the bot DMs the requester to confirm it out-of-band instead of trusting a password typed in a public channel
 - **Three Agent Zero tools**
   - `parley_read` — fetch a channel's context window on demand
@@ -94,6 +94,17 @@ All settings live in `default_config.yaml` and are overridable via env vars or t
 | `expand_top` / `REVOLT_EXPAND_TOP` | `3` | Top backfill hits to expand with neighbor messages |
 | `include_first` / `REVOLT_INCLUDE_FIRST` | `true` | Include the channel's oldest message in every context |
 | `include_pinned` / `REVOLT_INCLUDE_PINNED` | `true` | Include pinned messages in every context |
+
+## Password security
+
+If `enable_commands` is on and `commands_password` is set, the password is never accepted from the public channel message. Instead:
+
+1. The requester @mentions the bot in the channel; the bot replies publicly with "🔐 Check your DMs to authorize this command."
+2. The bot sends the requester a **direct message** asking them to reply with the password.
+3. The requester replies to that DM with the password. Only that private reply is checked — the original public message is never inspected for a password.
+4. If the correct password arrives within 2 minutes, the command is authorized and the original request proceeds. If it times out or the DM can't be sent (e.g. the requester has DMs disabled), the request is dropped and no commands run.
+
+This means the password only ever needs to be known to a human confirming out-of-band — it's never parsed out of, or exposed in, the triggering channel message.
 
 ## Project layout
 
