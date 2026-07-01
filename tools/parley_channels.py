@@ -1,11 +1,11 @@
-"""revolt_channels — list channels in the configured Revolt server."""
+"""parley_channels — list channels in the configured Revolt server."""
 
 from __future__ import annotations
 
 from helpers.tool import Tool, Response
 
 
-class RevoltChannels(Tool):
+class ParleyChannels(Tool):
     async def execute(self, **kwargs):
         from usr.plugins.parley.infrastructure.revolt.revolt_config import load_revolt_config
         from usr.plugins.parley.infrastructure.revolt.revolt_platform import get_platform

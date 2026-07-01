@@ -10,9 +10,9 @@ Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Disco
 - **Shell command gating** — commands are disabled by default; when enabled, they can require a password embedded in the request
 - **DM password challenge** — if a password is set, the bot DMs the requester to confirm it out-of-band instead of trusting a password typed in a public channel
 - **Three Agent Zero tools**
-  - `revolt_read` — fetch a channel's context window on demand
-  - `revolt_send` — post a message (auto-splits long replies)
-  - `revolt_channels` — list every channel in the server
+  - `parley_read` — fetch a channel's context window on demand
+  - `parley_send` — post a message (auto-splits long replies)
+  - `parley_channels` — list every channel in the server
 - **Web UI config panel** — configure credentials and tuning knobs from the Agent Zero sidebar
 - **Echo prevention** — the bot never triggers itself on its own messages
 
@@ -117,9 +117,9 @@ AgentParley/
 ├── deploy.sh            # One-command deploy to Docker container
 │
 ├── tools/               # Agent Zero tools
-│   ├── revolt_read.py
-│   ├── revolt_send.py
-│   └── revolt_channels.py
+│   ├── parley_read.py
+│   ├── parley_send.py
+│   └── parley_channels.py
 │
 ├── helpers/             # Shared runtime state
 │   ├── revolt_listener.py   # WebSocket listener (background task)
