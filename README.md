@@ -2,6 +2,8 @@
 
 Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Discord, and Slack as a teammate, not a bolted-on bot. It listens for @mentions over WebSocket/Socket Mode, builds smart context-aware conversations from channel history, and replies right in-thread — without any browser or manual polling.
 
+![Agent Zero replying in-channel](docs/Screenshot1-2026.06.30.png)
+
 ## Features
 
 - **Three platforms, one agent** — Stoat/Revolt, Discord, and Slack all wired through the same listener and context-window pipeline
@@ -60,6 +62,8 @@ Open Agent Zero's web UI → **Settings** → **Plugins** → **Parley (Revolt)*
 | `REVOLT_SERVER_ID` | ID of the Revolt server (guild) to connect to |
 
 These can also be set as environment variables on the container.
+
+![Plugin Settings panel](docs/Screenshot2-2026.06.30.png)
 
 ## Bot setup per platform
 
