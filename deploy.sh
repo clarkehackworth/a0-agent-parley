@@ -15,7 +15,7 @@ echo "→ Clearing stale .pyc cache ..."
 docker -H ssh://docker.lan exec "$CONTAINER" find "$DEST" -name "*.pyc" -delete
 
 echo "→ Running execute.py inside container ..."
-docker -H ssh://docker.lan exec "$CONTAINER" /opt/venv-a0/bin/python "$DEST/execute.py"
+docker -H ssh://docker.lan exec "$CONTAINER" /opt/venv/bin/python "$DEST/execute.py"
 
 if [[ "${1:-}" == "--restart" ]]; then
   echo "→ Restarting agent-zero ..."

@@ -6,6 +6,8 @@ Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Disco
 
 ![Agent Zero replying in-channel](docs/Screenshot1-2026.06.30.png)
 
+There are other plugins that connect Agent Zero to a messaging app, but most stop at sending and receiving messages. Parley isn't about messaging — it's about community interaction and smart context management of channels: it builds rich, deduplicated conversation context from history, pins, and search backfill before the agent ever replies, so it acts like a teammate who's been reading the channel, not a bot relaying a single message.
+
 ## Features
 
 - **Three platforms, one agent** — Stoat/Revolt, Discord, and Slack all wired through the same listener and context-window pipeline

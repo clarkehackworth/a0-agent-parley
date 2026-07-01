@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def _find_python():
-    venv = Path("/opt/venv-a0/bin/python")
+    venv = Path("/opt/venv/bin/python")
     return str(venv) if venv.exists() else sys.executable
 
 
