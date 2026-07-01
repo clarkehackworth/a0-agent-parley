@@ -1,6 +1,9 @@
 <html>
 <head>
-  <title>Parley (Revolt) Config</title>
+  <title>Parley Config</title>
+  <script type="module">
+    import { store } from "/plugins/parley/webui/parley-config-store.js";
+  </script>
   <style>
     /* Channel picker modal — self-contained copy so this page works in its iframe */
     .cfg-cp-overlay {
@@ -89,130 +92,61 @@
 </head>
 
 <body>
-<!-- ── Inline channel-picker store (self-contained for this iframe) ──────── -->
-<script>
-  function _registerCfgPicker() {
-    Alpine.store('cfgPicker', {
-      open: false, title: '', allChannels: true,
-      channels: [], saving: false, refreshing: false,
-      _onSave: null, _onRefresh: null,
-
-      show(opts) {
-        this.title      = opts.title || 'Watched Channels';
-        this._onSave    = opts.onSave;
-        this._onRefresh = opts.onRefresh;
-        var watched = opts.watchedIds || [];
-        this.allChannels = watched.length === 0;
-        this._apply(opts.channels || [], new Set(watched));
-        this.open = true;
-      },
-      close() { this.open = false; },
-      toggle(id) {
-        var ch = this.channels.find(function(c){ return c.id === id; });
-        if (ch) ch.selected = !ch.selected;
-      },
-      async save() {
-        if (!this._onSave || this.saving) return;
-        var ids = this.allChannels
-          ? []
-          : this.channels.filter(function(c){ return c.selected; }).map(function(c){ return c.id; });
-        this.saving = true;
-        try {
-          await this._onSave(ids);
-          this.open = false;
-        } catch(e) {
-          // leave open; caller shows its own error
-        } finally {
-          this.saving = false;
-        }
-      },
-      async refresh() {
-        if (!this._onRefresh || this.refreshing) return;
-        this.refreshing = true;
-        try {
-          var updated = await this._onRefresh();
-          if (Array.isArray(updated)) {
-            var draft = new Set(this.channels.filter(function(c){ return c.selected; }).map(function(c){ return c.id; }));
-            this._apply(updated, draft.size ? draft : null);
-          }
-        } finally {
-          this.refreshing = false;
-        }
-      },
-      _apply(list, selectedIds) {
-        this.channels = list.map(function(ch) {
-          return Object.assign({}, ch, {
-            selected: selectedIds === null || selectedIds.has(ch.id),
-          });
-        });
-      },
-    });
-  }
-  if (globalThis.Alpine) _registerCfgPicker();
-  else document.addEventListener('alpine:init', _registerCfgPicker);
-
-  // Summary text for watched_channels (array or comma-string)
-  window._chSummary = function(val) {
-    var ids = Array.isArray(val)
-      ? val.filter(Boolean)
-      : (val || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-    if (!ids.length) return 'All channels';
-    return ids.length + ' channel' + (ids.length === 1 ? '' : 's') + ' selected';
-  };
-</script>
 
 <!-- ── Picker modal ────────────────────────────────────────────────────────── -->
 <div x-data x-cloak>
-  <template x-if="$store.cfgPicker.open">
+  <template x-if="$store.parleyConfig">
+  <template x-if="$store.parleyConfig.open">
     <div class="cfg-cp-overlay">
-      <div class="cfg-cp-backdrop" @click="$store.cfgPicker.close()"></div>
+      <div class="cfg-cp-backdrop" @click="$store.parleyConfig.close()"></div>
       <div class="cfg-cp-panel">
 
         <div class="cfg-cp-header">
-          <span x-text="$store.cfgPicker.title"></span>
+          <span x-text="$store.parleyConfig.title"></span>
           <button class="cfg-cp-refresh"
-                  :class="{ 'cfg-cp-spinning': $store.cfgPicker.refreshing }"
-                  :disabled="$store.cfgPicker.refreshing"
-                  @click="$store.cfgPicker.refresh()"
+                  :class="{ 'cfg-cp-spinning': $store.parleyConfig.refreshing }"
+                  :disabled="$store.parleyConfig.refreshing"
+                  @click="$store.parleyConfig.refresh()"
                   title="Refresh channel list">⟳</button>
         </div>
 
         <div class="cfg-cp-all">
           <label>
-            <input type="checkbox" x-model="$store.cfgPicker.allChannels" />
+            <input type="checkbox" x-model="$store.parleyConfig.allChannels" />
             All channels
           </label>
         </div>
 
         <div class="cfg-cp-list">
-          <template x-for="ch in $store.cfgPicker.channels" :key="ch.id">
+          <template x-for="ch in $store.parleyConfig.channels" :key="ch.id">
             <label class="cfg-cp-item"
-                   :class="{ 'cfg-cp-disabled': $store.cfgPicker.allChannels }">
+                   :class="{ 'cfg-cp-disabled': $store.parleyConfig.allChannels }">
               <input type="checkbox"
                      :checked="ch.selected"
-                     :disabled="$store.cfgPicker.allChannels"
-                     @change="$store.cfgPicker.toggle(ch.id)" />
+                     :disabled="$store.parleyConfig.allChannels"
+                     @change="$store.parleyConfig.toggle(ch.id)" />
               <span>#<span x-text="ch.name"></span></span>
             </label>
           </template>
         </div>
 
         <div class="cfg-cp-footer">
-          <button class="button cancel" @click="$store.cfgPicker.close()">Cancel</button>
+          <button class="button cancel" @click="$store.parleyConfig.close()">Cancel</button>
           <button class="button confirm"
-                  :disabled="$store.cfgPicker.saving"
-                  @click="$store.cfgPicker.save()"
-                  x-text="$store.cfgPicker.saving ? 'Saving…' : 'Save'"></button>
+                  :disabled="$store.parleyConfig.saving"
+                  @click="$store.parleyConfig.save()"
+                  x-text="$store.parleyConfig.saving ? 'Saving…' : 'Save'"></button>
         </div>
 
       </div>
     </div>
   </template>
+  </template>
 </div>
 
 <!-- ── Config form ─────────────────────────────────────────────────────────── -->
   <div x-data="{ tab: 'revolt' }" x-init="if(config){config.discord=config.discord||{};config.slack=config.slack||{};}">
-    <template x-if="config">
+    <template x-if="config && $store.parleyConfig">
       <div class="plugin-config-page">
 
         <!-- ── Tabs ──────────────────────────────────────────────────────── -->
@@ -291,13 +225,12 @@
           <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
             <div style="display:flex;align-items:center;gap:10px">
               <button type="button" class="button cfg-ch-btn"
-                      @click="window._openWatchedPicker('revolt', config, $el)">
+                      @click="$store.parleyConfig.openWatchedPicker('revolt', config, $el)">
                 Choose channels…
               </button>
               <span style="font-size:12px;opacity:.6"
-                    x-text="window._chSummary(config.watched_channels)"></span>
+                    x-text="$store.parleyConfig.chSummary(config.watched_channels)"></span>
             </div>
-            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
           </div>
         </div>
 
@@ -403,13 +336,12 @@
           <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
             <div style="display:flex;align-items:center;gap:10px">
               <button type="button" class="button cfg-ch-btn"
-                      @click="window._openWatchedPicker('discord', config, $el)">
+                      @click="$store.parleyConfig.openWatchedPicker('discord', config, $el)">
                 Choose channels…
               </button>
               <span style="font-size:12px;opacity:.6"
-                    x-text="window._chSummary(config.discord.watched_channels)"></span>
+                    x-text="$store.parleyConfig.chSummary(config.discord.watched_channels)"></span>
             </div>
-            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
           </div>
         </div>
 
@@ -515,13 +447,12 @@
           <div class="field-control" style="flex-direction:column;align-items:flex-start;gap:5px">
             <div style="display:flex;align-items:center;gap:10px">
               <button type="button" class="button cfg-ch-btn"
-                      @click="window._openWatchedPicker('slack', config, $el)">
+                      @click="$store.parleyConfig.openWatchedPicker('slack', config, $el)">
                 Choose channels…
               </button>
               <span style="font-size:12px;opacity:.6"
-                    x-text="window._chSummary(config.slack.watched_channels)"></span>
+                    x-text="$store.parleyConfig.chSummary(config.slack.watched_channels)"></span>
             </div>
-            <span class="cfg-ch-error" style="font-size:12px;color:#e57373;display:none"></span>
           </div>
         </div>
 
@@ -589,81 +520,6 @@
     </template>
   </div>
 
-<!-- ── Picker logic ────────────────────────────────────────────────────────── -->
-<script type="module">
-import { callJsonApi } from "/js/api.js";
-
-const _PLATFORMS = {
-  revolt:  { channelsUrl: 'channels',         updateUrl: 'update_channels',         title: 'Revolt Watched Channels',  cfgObj: (c) => c,        },
-  discord: { channelsUrl: 'discord_channels',  updateUrl: 'discord_update_channels', title: 'Discord Watched Channels', cfgObj: (c) => c.discord, },
-  slack:   { channelsUrl: 'slack_channels',    updateUrl: 'slack_update_channels',   title: 'Slack Watched Channels',   cfgObj: (c) => c.slack,   },
-};
-
-window._openWatchedPicker = async function(platform, config, btn) {
-  const p        = _PLATFORMS[platform];
-  const fieldCtl = btn.closest('.field-control');
-  const errEl    = fieldCtl.querySelector('.cfg-ch-error');
-  const origText = btn.textContent;
-
-  errEl.style.display = 'none';
-  errEl.textContent   = '';
-  btn.disabled        = true;
-  btn.textContent     = 'Loading…';
-
-  try {
-    const data = await callJsonApi(`/plugins/parley/${p.channelsUrl}`);
-
-    if (data.not_configured) {
-      const hint = {
-        revolt:  'Save your bot token and server ID first.',
-        discord: 'Save your bot token and guild ID first.',
-        slack:   'Save your bot token first.',
-      }[platform];
-      throw new Error(`${platform.charAt(0).toUpperCase() + platform.slice(1)} is not configured — ${hint}`);
-    }
-    if (!data.ok) {
-      throw new Error(data.error || `Cannot connect to ${platform} server.`);
-    }
-
-    const textChannels = (data.channels || []).filter(c => c.type === 'TextChannel');
-    if (!textChannels.length) {
-      throw new Error('No text channels found. Check the bot has access to at least one channel.');
-    }
-
-    const cfgObj     = p.cfgObj(config);
-    const currentVal = cfgObj.watched_channels;
-    const watchedIds = Array.isArray(currentVal)
-      ? currentVal.filter(Boolean)
-      : (currentVal || '').split(',').map(s => s.trim()).filter(Boolean);
-
-    Alpine.store('cfgPicker').show({
-      title:    p.title,
-      channels: textChannels,
-      watchedIds,
-
-      onSave: async (ids) => {
-        const res = await callJsonApi(`/plugins/parley/${p.updateUrl}`, { watched_channels: ids });
-        if (!res.ok) throw new Error(res.error || 'Save failed');
-        // Update reactive config so the x-text summary re-renders
-        cfgObj.watched_channels = ids;
-      },
-
-      onRefresh: async () => {
-        const r = await callJsonApi(`/plugins/parley/${p.channelsUrl}`);
-        if (!r.ok) throw new Error(r.error || 'Refresh failed');
-        return (r.channels || []).filter(c => c.type === 'TextChannel');
-      },
-    });
-
-  } catch (e) {
-    errEl.textContent   = e.message || String(e);
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = origText;
-  }
-};
-</script>
 
 </body>
 </html>
