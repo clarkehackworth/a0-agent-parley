@@ -1,10 +1,10 @@
 <img src="docs/logos/dark-128.png" alt="Parley logo" width="64" align="right">
 
-# AgentParley — Chat Plugin for Agent Zero
+# Agent Parley — Chat Plugin for Agent Zero
 
 Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Discord, and Slack as a teammate, not a bolted-on bot. It listens for @mentions over WebSocket/Socket Mode, builds smart context-aware conversations from channel history, and replies right in-thread — without any browser or manual polling.
 
-![Agent Zero replying in-channel](docs/Screenshot1-2026.06.30.png)
+![Agent Zero replying in-channel](docs/Screenshot1-2026.07.01.png)
 
 There are other plugins that connect Agent Zero to a messaging app, but most stop at sending and receiving messages. Parley isn't about messaging — it's about community interaction and smart context management of channels: it builds rich, deduplicated conversation context from history, pins, and search backfill before the agent ever replies, so it acts like a teammate who's been reading the channel, not a bot relaying a single message.
 
@@ -92,7 +92,7 @@ Each platform needs a bot account created and invited before AgentParley can con
 
 ### 3. Enable the plugin
 
-In the Agent Zero sidebar, enable **Parley**. The WebSocket listener starts automatically (`auto_start: true` by default). The bot is now online.
+In Agent Zero's Plugin List, toggle **Parley** on. The WebSocket listener starts automatically (`auto_start: true` by default). The bot is now online.
 
 ## Configuration reference
 
