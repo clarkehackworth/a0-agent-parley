@@ -137,10 +137,18 @@ def test_select_backfill_empty():
 def test_within_age_no_limit():
     assert _within_age(_msg("01HQZWX0000000000000000000"), 0.0) is True
 
-def test_filter_msgs_bot():
-    msgs = [_msg("a", author_id="bot"), _msg("b", author_id="user")]
+def test_filter_msgs_bot_status():
+    msgs = [
+        _msg("a", author_id="bot", content="⚙️ Working on it…"),
+        _msg("b", author_id="user"),
+    ]
     result = _filter_msgs(msgs, bot_id="bot", max_age_days=0)
     assert len(result) == 1 and result[0].author_id == "user"
+
+def test_filter_msgs_bot_non_status_kept():
+    msgs = [_msg("a", author_id="bot", content="hello"), _msg("b", author_id="user")]
+    result = _filter_msgs(msgs, bot_id="bot", max_age_days=0)
+    assert len(result) == 2
 
 
 # ── echo_prevention ───────────────────────────────────────────────────────────

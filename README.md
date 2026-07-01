@@ -37,7 +37,7 @@ In Agent Zero's web UI, go to **Settings → Plugins → Add Plugin** and paste 
 https://github.com/clarkehackworth/a0-agent-parley
 ```
 
-Agent Zero clones the plugin and runs `execute.py` automatically to install its Python dependencies (`aiohttp`, `pyyaml`, `httptools`).
+After Agent Zero clones the plugin, click **Init** next to Parley in the Plugin List to run `execute.py`, which installs its Python dependencies (`aiohttp`, `pyyaml`, `httptools`).
 
 ### 2. Configure credentials
 
@@ -134,29 +134,40 @@ This means the password only ever needs to be known to a human confirming out-of
 AgentParley/
 ├── plugin.yaml          # Plugin manifest (name, credentials, settings)
 ├── default_config.yaml  # Default values for all config knobs
-├── hooks.py             # Agent Zero hook: reconnect on config save
-├── initialize.py        # Dependency installer (aiohttp, pyyaml)
+├── hooks.py             # Agent Zero hook: reconnect listeners on config save
+├── execute.py           # Dependency installer (aiohttp, pyyaml, httptools) — run via the Init button
 ├── deploy.sh            # One-command deploy to Docker container
 │
+├── api/                 # Web UI endpoints (status, channel listing, message send/bridge)
 ├── tools/               # Agent Zero tools
 │   ├── revolt_read.py
 │   ├── revolt_send.py
-│   └── revolt_channels.py
+│   ├── revolt_channels.py
+│   ├── discord_send.py
+│   └── slack_send.py
 │
 ├── helpers/             # Shared runtime state
-│   ├── revolt_listener.py   # WebSocket listener (background task)
-│   ├── revolt_constants.py
-│   └── revolt_sent_ids.py   # Echo prevention
+│   ├── revolt_listener.py    # WebSocket listener (background task)
+│   ├── discord_listener.py
+│   ├── slack_listener.py
+│   ├── dm_auth.py            # DM password-challenge store
+│   ├── revolt_constants.py / discord_constants.py / slack_constants.py
+│   └── revolt_sent_ids.py    # Echo prevention
 │
 ├── core/                # Context window logic
 │   ├── context_window.py
 │   ├── context_config.py
 │   ├── keywords.py
 │   ├── formatting.py
-│   └── message_split.py
+│   ├── message_split.py
+│   ├── models.py
+│   └── echo_prevention.py
 │
-├── infrastructure/      # Revolt API client
+├── infrastructure/      # Platform API clients (revolt/, discord/, slack/) + platform_factory
+├── interface/agent_zero/ # @mention handlers that bridge platform messages into Agent Zero
 ├── ports/               # Chat platform abstraction
+├── extensions/          # Agent Zero lifecycle/webui extension points (listener startup, bridge replies, channel picker UI)
+├── prompts/             # Tool descriptions surfaced to the agent
 ├── webui/               # config.html panel
 └── tests/
 ```

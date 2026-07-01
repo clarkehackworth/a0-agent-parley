@@ -5,12 +5,6 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
-from pathlib import Path
-
-
-def _find_python():
-    venv = Path("/opt/venv/bin/python")
-    return str(venv) if venv.exists() else sys.executable
 
 
 def _install(pip_name: str, python: str):
@@ -22,7 +16,8 @@ def _install(pip_name: str, python: str):
 
 
 def main() -> int:
-    python = _find_python()
+    # Agent Zero invokes this script with the correct interpreter already.
+    python = sys.executable
     deps = {"aiohttp": "aiohttp>=3.9,<4", "yaml": "pyyaml>=6.0,<7", "httptools": "httptools>=0.6"}
     failed = []
     for import_name, pip_name in deps.items():

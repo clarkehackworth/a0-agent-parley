@@ -9,7 +9,8 @@ per_agent_config: false
 always_enabled: false
 
 # Connection credentials — surfaced in `hermes config` and overriding default_config.yaml.
-requires_env:
+# None of these are hard-required: Parley works with any one of Revolt, Discord, or Slack configured.
+optional_env:
   - name: REVOLT_URL
     description: "Base URL of your Revolt instance (e.g. http://stoat.lan:13080)"
     prompt: "Revolt server URL"
@@ -26,8 +27,6 @@ requires_env:
     description: "ID of the Revolt server (guild) to connect to"
     prompt: "Revolt server ID"
     password: false
-
-optional_env:
   - name: REVOLT_AUTO_START
     description: "Start the WebSocket listener automatically with Agent Zero (true/false, default: true)"
     prompt: "Auto-start listener? (true/false)"
