@@ -1,11 +1,11 @@
-"""parley_read — context-aware channel message retrieval."""
+"""revolt_read — context-aware channel message retrieval."""
 
 from __future__ import annotations
 
 from helpers.tool import Tool, Response
 
 
-class ParleyRead(Tool):
+class RevoltRead(Tool):
     async def execute(
         self,
         channel_id: str = "",

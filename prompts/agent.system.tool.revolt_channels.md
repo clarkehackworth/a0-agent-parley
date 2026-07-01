@@ -1,4 +1,4 @@
-## parley_channels
+## revolt_channels
 List all channels in the configured Parley (Revolt) server.
 
 Use this when you need to discover what channels exist before reading or sending messages.
@@ -6,5 +6,5 @@ Use this when you need to discover what channels exist before reading or sending
 **No arguments required.**
 
 ~~~json
-{"thoughts": "...", "tool_name": "parley_channels", "tool_args": {}}
+{"thoughts": "...", "tool_name": "revolt_channels", "tool_args": {}}
 ~~~

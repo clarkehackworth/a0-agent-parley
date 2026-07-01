@@ -106,7 +106,7 @@ def _humanize(text: str) -> str:
     tool_name = (data.get("tool_name") or "").strip()
     tool_args: dict = data.get("tool_args") or {}
 
-    if tool_name.startswith("parley_"):
+    if tool_name.startswith("revolt_"):
         return ""
 
     if tool_name:

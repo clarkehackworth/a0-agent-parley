@@ -1,4 +1,4 @@
-"""parley_send — post a message to a Revolt channel."""
+"""revolt_send — post a message to a Revolt channel."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from usr.plugins.parley.core.message_split import split_message
 from usr.plugins.parley.helpers.revolt_constants import CTX_REVOLT_CHANNEL_ID, MAX_MSG_LEN
 
 
-class ParleySend(Tool):
+class RevoltSend(Tool):
     async def execute(
         self,
         channel_id: str = "",
@@ -48,7 +48,7 @@ class ParleySend(Tool):
             )
 
         if self.agent and self.agent.context:
-            self.agent.context.data["parley_send_used"] = True
+            self.agent.context.data["revolt_send_used"] = True
 
         parts = f"{sent} part(s)" if len(chunks) > 1 else "message"
         return Response(

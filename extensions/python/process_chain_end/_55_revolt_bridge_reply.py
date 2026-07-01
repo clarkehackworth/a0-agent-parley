@@ -29,7 +29,7 @@ class RevoltBridgeReply(Extension):
             return
 
         try:
-            if context.data.pop("parley_send_used", False):
+            if context.data.pop("revolt_send_used", False):
                 return
 
             response = _last_response(context)
