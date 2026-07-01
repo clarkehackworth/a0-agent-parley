@@ -93,7 +93,7 @@ Each platform needs a bot account created and invited before AgentParley can con
 
 ### 3. Enable the plugin
 
-In the Agent Zero sidebar, enable **Parley (Revolt)**. The WebSocket listener starts automatically (`auto_start: true` by default). The bot is now online.
+In the Agent Zero sidebar, enable **Parley**. The WebSocket listener starts automatically (`auto_start: true` by default). The bot is now online.
 
 ## Configuration reference
 
