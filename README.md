@@ -37,7 +37,9 @@ Agent Zero clones the plugin and runs `execute.py` automatically to install its 
 
 ### 2. Configure credentials
 
-Open Agent Zero's web UI → **Settings** → **Plugins** → **Parley (Revolt)**. Fill in:
+Open Agent Zero's web UI → **Settings** → **Plugins** → **Parley**, and fill in the tab(s) for whichever platform(s) you're connecting.
+
+**Stoat / Revolt**
 
 | Field | Description |
 |---|---|
@@ -45,6 +47,22 @@ Open Agent Zero's web UI → **Settings** → **Plugins** → **Parley (Revolt)*
 | `REVOLT_BOT_TOKEN` | Token from your Revolt bot settings page |
 | `REVOLT_BOT_ID` | The bot's user ID (filters the bot's own messages) |
 | `REVOLT_SERVER_ID` | ID of the Revolt server (guild) to connect to |
+
+**Discord**
+
+| Field | Description |
+|---|---|
+| `DISCORD_BOT_TOKEN` | Bot token from the Discord Developer Portal |
+| `DISCORD_GUILD_ID` | ID of the Discord guild (server) to connect to |
+| `DISCORD_BOT_ID` | The bot's user ID (optional; auto-fetched via `/users/@me`) |
+
+**Slack**
+
+| Field | Description |
+|---|---|
+| `SLACK_BOT_TOKEN` | Bot token (`xoxb-...`) for Web API calls |
+| `SLACK_APP_TOKEN` | App-level token (`xapp-...`) for the Socket Mode listener |
+| `SLACK_TEAM_ID` | Slack workspace/team ID |
 
 These can also be set as environment variables on the container.
 
