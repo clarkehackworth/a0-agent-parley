@@ -238,6 +238,7 @@
       _displayedIds = new Set();
       _stopPolling();
 
+      window._parleyCV?.closePanel?.();  // ponytail: only one channel panel open at a time
       panel.classList.add("open");
       _syncLeft();
       loadChannel(false);

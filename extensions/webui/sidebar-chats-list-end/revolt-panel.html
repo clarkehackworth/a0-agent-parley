@@ -24,6 +24,17 @@
       cursor: pointer;
     }
 
+    /* Arrow: down when channels shown (can shade), right when shaded. Base SVG points right. */
+    #parley-panel .arrow-icon {
+      transform: rotate(90deg);
+      transition: transform .15s ease;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #parley-panel .parley-header-row:has(.parley-header.collapsed) .arrow-icon {
+      transform: rotate(0deg);
+    }
+
     .parley-status-dot {
       display: inline-block;
       width: 7px;
@@ -114,10 +125,6 @@
         class="parley-status-dot"
         :class="$store.parley.connected ? 'live' : ($store.parley.error ? 'error' : '')"
       ></span>
-      <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-           fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-        <path d="M8 4l8 8-8 8" />
-      </svg>
     </h3>
 
     <button
@@ -125,6 +132,12 @@
       @click.stop="$store.parley.openPicker()"
       title="Select watched channels"
     >＋</button>
+
+    <svg class="arrow-icon" @click="$store.sidebar.toggleSection('parley')"
+         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <path d="M8 4l8 8-8 8" />
+    </svg>
   </div>
 
   <!-- Collapsible body -->

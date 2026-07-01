@@ -44,41 +44,6 @@
     white-space: nowrap;
   }
 
-  /* Bridge toggle */
-  .parley-bridge-toggle {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.75rem;
-    color: var(--color-text-secondary, #999);
-    cursor: pointer;
-    user-select: none;
-    padding: 3px 6px;
-    border-radius: 5px;
-    border: 1px solid var(--color-border, #444);
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
-  .parley-bridge-toggle:hover { border-color: var(--color-accent, #7c8cff); }
-  .parley-bridge-toggle.active {
-    color: #4caf50;
-    border-color: #4caf50;
-    background: rgba(76,175,80,0.08);
-  }
-  .parley-bridge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-  .parley-bridge-toggle.active .parley-bridge-dot {
-    animation: parley-pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes parley-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
   .parley-cv-btn {
     background: none;
     border: none;
@@ -225,7 +190,6 @@ let _channelName = null;
 let _serverName = null;
 let _loading = false;
 let _sending = false;
-let _bridgeActive = false;
 let _pollTimer = null;
 let _lastSeenId = null;   // newest message ID we have displayed
 let _ownUserId = null;    // agent's Revolt user ID (don't re-bridge own replies)
@@ -239,10 +203,6 @@ panel.innerHTML = `
     <span class="parley-cv-server" id="parley-cv-server"></span>
     <span class="parley-cv-title" id="parley-cv-title">#channel</span>
     <span class="parley-cv-keywords" id="parley-cv-keywords"></span>
-    <button class="parley-bridge-toggle" id="parley-bridge-btn" title="Live updates: keep this view refreshed with new Parley messages (does not forward to the agent)">
-      <span class="parley-bridge-dot"></span>
-      <span id="parley-bridge-label">Live updates</span>
-    </button>
     <button class="parley-cv-btn" id="parley-cv-refresh" title="Refresh messages">⟳</button>
     <button class="parley-cv-btn" id="parley-cv-close" title="Close">✕</button>
   </div>
@@ -274,7 +234,6 @@ function _bindEvents() {
   document.getElementById("parley-cv-refresh").addEventListener("click", () => {
     if (_channelId) loadChannel(_channelId, _channelName, true);
   });
-  document.getElementById("parley-bridge-btn").addEventListener("click", toggleBridge);
 
   const ta = document.getElementById("parley-cv-textarea");
   ta.addEventListener("keydown", (e) => {
@@ -311,6 +270,7 @@ export function openChannel(channelId, channelName, serverName) {
   _channelId = channelId;
   _channelName = channelName;
   _serverName = serverName;
+  window._platformCV?.closePanel?.();  // ponytail: only one channel panel open at a time
   panel.classList.add("open");
   _syncLeft();
   ensureOwnUserId();
@@ -329,18 +289,10 @@ function _syncLeft() {
 }
 
 // --- Live view updates ---
-// Toggles live polling of the channel so newly arrived messages appear in this
-// view. It does NOT forward anything to the agent — the WebSocket listener is
-// the single ingestion path and responds to @mentions only.
-function toggleBridge() {
-  _bridgeActive = !_bridgeActive;
-  const btn = document.getElementById("parley-bridge-btn");
-  const lbl = document.getElementById("parley-bridge-label");
-  btn.classList.toggle("active", _bridgeActive);
-  lbl.textContent = _bridgeActive ? "Live" : "Live updates";
-  _bridgeActive ? _startPolling() : _stopPolling();
-}
-
+// Polls the channel so newly arrived messages appear in this view. Always on
+// while a channel is open (matches the Slack/Discord views). It does NOT
+// forward anything to the agent — the WebSocket listener is the single
+// ingestion path and responds to @mentions only.
 function _startPolling() {
   _stopPolling();
   _pollTimer = setInterval(_pollNewMessages, 5000);
@@ -384,6 +336,7 @@ async function _pollNewMessages() {
 async function loadChannel(channelId, channelName, isRefresh) {
   if (_loading) return;
   _loading = true;
+  _stopPolling();
   _displayedIds = new Set();
   _lastSeenId = null;
 
@@ -457,6 +410,7 @@ async function loadChannel(channelId, channelName, isRefresh) {
   } finally {
     _loading = false;
     refreshBtn.classList.remove("spinning");
+    _startPolling();
   }
 }
 

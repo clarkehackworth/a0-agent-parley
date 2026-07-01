@@ -24,6 +24,17 @@
       cursor: pointer;
     }
 
+    /* Arrow: down when channels shown (can shade), right when shaded. Base SVG points right. */
+    #discord-panel .arrow-icon {
+      transform: rotate(90deg);
+      transition: transform .15s ease;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #discord-panel .discord-header-row:has(.discord-header.collapsed) .arrow-icon {
+      transform: rotate(0deg);
+    }
+
     .discord-status-dot {
       display: inline-block;
       width: 7px;
@@ -114,10 +125,6 @@
         class="discord-status-dot"
         :class="$store.discord.connected ? 'live' : ($store.discord.error ? 'error' : '')"
       ></span>
-      <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-           fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-        <path d="M8 4l8 8-8 8" />
-      </svg>
     </h3>
 
     <button
@@ -125,6 +132,12 @@
       @click.stop="$store.discord.openPicker()"
       title="Select watched channels"
     >＋</button>
+
+    <svg class="arrow-icon" @click="$store.sidebar.toggleSection('discord')"
+         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <path d="M8 4l8 8-8 8" />
+    </svg>
   </div>
 
   <!-- Collapsible body -->
