@@ -15,12 +15,7 @@ There are other plugins that connect Agent Zero to a messaging app, but most sto
 - **Context-aware backfill** — combines recent messages, keyword-searched history, pinned messages, and neighbor expansion into a single rich context window
 - **Shell command gating** — commands are disabled by default; when enabled, they can require a password confirmed via DM before running (see [Password security](#password-security))
 - **DM password challenge** — if a password is set, the bot DMs the requester to confirm it out-of-band instead of trusting a password typed in a public channel
-- **Three Agent Zero tools**
-  - `revolt_read` — fetch a channel's context window on demand
-  - `revolt_send` — post a message (auto-splits long replies)
-  - `revolt_channels` — list every channel in the server
 - **Web UI config panel** — configure credentials and tuning knobs from the Agent Zero sidebar
-- **Echo prevention** — the bot never triggers itself on its own messages
 
 ## Requirements
 
