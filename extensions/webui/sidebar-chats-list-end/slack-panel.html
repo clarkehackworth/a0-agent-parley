@@ -181,6 +181,7 @@
           <template x-for="ch in $store.slack.displayedChannels" :key="ch.id">
             <li
               class="slack-channel-item"
+              :data-ch-id="ch.id"
               @click="$store.slack.openChannel(ch)"
               :title="'Ask agent to read #' + ch.name"
             >

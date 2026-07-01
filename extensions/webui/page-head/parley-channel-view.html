@@ -272,6 +272,7 @@ export function openChannel(channelId, channelName, serverName) {
   _serverName = serverName;
   window._platformCV?.closePanel?.();  // ponytail: only one channel panel open at a time
   panel.classList.add("open");
+  window._cvHighlight?.set(channelId);
   _syncLeft();
   ensureOwnUserId();
   loadChannel(channelId, channelName, false);
@@ -279,6 +280,7 @@ export function openChannel(channelId, channelName, serverName) {
 
 export function closePanel() {
   panel.classList.remove("open");
+  window._cvHighlight?.clear();
   _stopPolling();
   _channelId = null;
 }

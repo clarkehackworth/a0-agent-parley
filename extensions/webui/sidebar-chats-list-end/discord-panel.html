@@ -181,6 +181,7 @@
           <template x-for="ch in $store.discord.displayedChannels" :key="ch.id">
             <li
               class="discord-channel-item"
+              :data-ch-id="ch.id"
               @click="$store.discord.openChannel(ch)"
               :title="'Ask agent to read #' + ch.name"
             >

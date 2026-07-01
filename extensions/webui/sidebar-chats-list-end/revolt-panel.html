@@ -184,6 +184,7 @@
           <template x-for="ch in $store.parley.displayedChannels" :key="ch.id">
             <li
               class="parley-channel-item"
+              :data-ch-id="ch.id"
               @click="$store.parley.openChannel(ch)"
               :title="'Ask agent to read #' + ch.name"
             >

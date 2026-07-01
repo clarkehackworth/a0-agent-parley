@@ -159,6 +159,19 @@
   }
   .pcv-send-btn:hover { opacity: 0.85; }
   .pcv-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Active channel highlight + suppress the stale agent-zero chat highlight
+     while a channel overlay is open. Shared by all three panels + both views. */
+  .slack-channel-item.parley-ch-active,
+  .discord-channel-item.parley-ch-active,
+  .parley-channel-item.parley-ch-active {
+    background: var(--color-background-hover, rgba(255,255,255,0.08));
+    font-weight: 600;
+  }
+  body.parley-cv-open .chat-selected .chat-name {
+    font-weight: normal;
+    font-size: var(--font-size-small);
+  }
 </style>
 
 <script type="module">
@@ -223,6 +236,21 @@
   }
 
   // ── Public API ───────────────────────────────────────────────────────────────
+  // Shared highlight helper used by both channel views: marks the open channel
+  // item and flags <body> so the stale agent-zero chat highlight is suppressed.
+  window._cvHighlight = {
+    set(id) {
+      document.body.classList.add("parley-cv-open");
+      this.clear(true);
+      const item = document.querySelector(`[data-ch-id="${window.CSS?.escape ? CSS.escape(String(id)) : id}"]`);
+      if (item) item.classList.add("parley-ch-active");
+    },
+    clear(keepBody) {
+      if (!keepBody) document.body.classList.remove("parley-cv-open");
+      document.querySelectorAll(".parley-ch-active").forEach(el => el.classList.remove("parley-ch-active"));
+    },
+  };
+
   window._platformCV = {
     openChannel(channelId, channelName, serverName, platform, ownUserId) {
       _channelId   = channelId;
@@ -240,6 +268,7 @@
 
       window._parleyCV?.closePanel?.();  // ponytail: only one channel panel open at a time
       panel.classList.add("open");
+      window._cvHighlight.set(channelId);
       _syncLeft();
       loadChannel(false);
     },
@@ -253,6 +282,7 @@
 
   function closePanel() {
     panel.classList.remove("open");
+    window._cvHighlight.clear();
     _stopPolling();
     _channelId = null;
   }
