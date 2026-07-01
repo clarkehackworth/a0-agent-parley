@@ -28,8 +28,8 @@ Bring [Agent Zero](https://github.com/frdel/agent-zero) into Stoat/Revolt, Disco
 ### 1. Clone
 
 ```bash
-git clone https://github.com/youruser/AgentParley.git
-cd AgentParley
+git clone https://github.com/clarkehackworth/a0-agent-parley.git
+cd a0-agent-parley
 ```
 
 ### 2. Deploy to Agent Zero
