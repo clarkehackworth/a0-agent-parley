@@ -1,4 +1,4 @@
-<img src="docs/logos/dark-256.png" alt="Parley logo" width="96">
+<img src="docs/logos/dark-128.png" alt="Parley logo" width="64" align="right">
 
 # AgentParley — Chat Plugin for Agent Zero
 
